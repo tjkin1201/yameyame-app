@@ -1,0 +1,46 @@
+{
+  "name": "yameyame",
+  "version": "0.3.0",
+  "description": "동배즐 - 동탄 배드민턴 동호회 통합 관리 시스템",
+  "main": "index.js",
+  "scripts": {
+    "dev": "powershell ./launch-parallel-dev.ps1",
+    "setup": "powershell ./setup-worktrees.ps1",
+    "claude-squad": "./run-claude-squad-phase1.bat",
+    "analyze": "claude-anywhere-fixed analyze",
+    "status": "claude-anywhere-fixed status",
+    "backend": "cd worktrees/backend-api && npm run dev",
+    "frontend": "cd worktrees/frontend-ui && expo start",
+    "test": "npm run test --workspaces",
+    "build": "npm run build --workspaces"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "nodejs",
+    "mongodb",
+    "badminton",
+    "sports-app",
+    "realtime",
+    "chat"
+  ],
+  "author": "taejo",
+  "license": "MIT",
+  "workspaces": [
+    "worktrees/*"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.1"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1"
+  }
+}
