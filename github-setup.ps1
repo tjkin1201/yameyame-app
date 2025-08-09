@@ -19,7 +19,7 @@ $repoExists = gh repo view yameyame-app 2>&1
 if ($LASTEXITCODE -eq 0) {
     Write-Host "⚠️  저장소가 이미 존재합니다." -ForegroundColor Yellow
 } else {
-    gh repo create yameyame-app --public --description "동배즐 - 동탄 배드민턴 동호회 통합 관리 시스템 (React Native + Node.js)" --clone=false
+    gh repo create yameyame-app --public --description "Badminton Club Management System - React Native + Node.js" --clone=false
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ GitHub 저장소 생성 완료" -ForegroundColor Green
     } else {
