@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:44:08.669Z","service":"backend-api","level":"WARNING","message":"높은 메모리 사용률: 84.09%","metadata":{"memory":{"rss":59133952,"heapTotal":7651328,"heapUsed":6433696,"external":2290876,"arrayBuffers":263007}},"pid":4100,"memory":{"rss":59133952,"heapTotal":7651328,"heapUsed":6434392,"external":2290876,"arrayBuffers":263007},"uptime":1440.2276514}

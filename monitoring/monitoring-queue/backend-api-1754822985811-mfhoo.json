@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:49:45.810Z","service":"backend-api","level":"ERROR","message":"HTTP 400 POST /api/posts","metadata":{"statusCode":400,"responseTime":0,"method":"POST","path":"/api/posts"},"pid":4100,"memory":{"rss":61419520,"heapTotal":11845632,"heapUsed":7109208,"external":2163949,"arrayBuffers":136080},"uptime":1777.369464}

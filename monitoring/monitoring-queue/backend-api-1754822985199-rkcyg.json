@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:49:45.198Z","service":"backend-api","level":"INFO","message":"DELETE /api/health","metadata":{"method":"DELETE","path":"/api/health","ip":"::1"},"pid":4100,"memory":{"rss":61415424,"heapTotal":11845632,"heapUsed":6840832,"external":2147891,"arrayBuffers":120022},"uptime":1776.7572454}

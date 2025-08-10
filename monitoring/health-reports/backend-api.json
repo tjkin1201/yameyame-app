@@ -1,0 +1,131 @@
+{
+  "service": "backend-api",
+  "status": "healthy",
+  "uptime": 11582.9826917,
+  "timestamp": "2025-08-10T14:39:07.191Z",
+  "process": {
+    "pid": 22440,
+    "memory": {
+      "rss": 56983552,
+      "heapTotal": 8962048,
+      "heapUsed": 7287184,
+      "external": 2051718,
+      "arrayBuffers": 26879
+    },
+    "cpu": {
+      "user": 687000,
+      "system": 656000
+    }
+  },
+  "system": {
+    "platform": "win32",
+    "arch": "x64",
+    "nodeVersion": "v24.4.1"
+  },
+  "metrics": {
+    "requests": 0,
+    "errors": 0,
+    "responses": {},
+    "uptime": 1754825164241,
+    "custom": {
+      "requests": 275,
+      "responses.200": 262,
+      "responses.201": 13
+    },
+    "uptimeSince": "2025-08-10T11:26:04.241Z"
+  },
+  "recentLogs": [
+    {
+      "timestamp": "2025-08-10T14:38:05.656Z",
+      "service": "backend-api",
+      "level": "INFO",
+      "message": "메모리 정리 완료",
+      "metadata": {
+        "logBufferSize": 200,
+        "batchLogsSize": 20
+      },
+      "pid": 22440,
+      "memory": {
+        "rss": 56983552,
+        "heapTotal": 8962048,
+        "heapUsed": 7933384,
+        "external": 2084486,
+        "arrayBuffers": 59647
+      },
+      "uptime": 11521.4475746
+    },
+    {
+      "timestamp": "2025-08-10T14:38:07.184Z",
+      "service": "backend-api",
+      "level": "DEBUG",
+      "message": "헬스 리포트 전송 완료",
+      "metadata": {},
+      "pid": 22440,
+      "memory": {
+        "rss": 56983552,
+        "heapTotal": 8962048,
+        "heapUsed": 7166416,
+        "external": 2084486,
+        "arrayBuffers": 18687
+      },
+      "uptime": 11522.9752643
+    },
+    {
+      "timestamp": "2025-08-10T14:38:37.189Z",
+      "service": "backend-api",
+      "level": "DEBUG",
+      "message": "헬스 리포트 전송 완료",
+      "metadata": {},
+      "pid": 22440,
+      "memory": {
+        "rss": 56983552,
+        "heapTotal": 8962048,
+        "heapUsed": 7213792,
+        "external": 2051718,
+        "arrayBuffers": 26879
+      },
+      "uptime": 11552.9803917
+    },
+    {
+      "timestamp": "2025-08-10T14:39:05.661Z",
+      "service": "backend-api",
+      "level": "WARNING",
+      "message": "높은 메모리 사용률: 80.85%",
+      "metadata": {
+        "memory": {
+          "heapUsed": 7245376,
+          "heapTotal": 8962048,
+          "rss": 56983552
+        }
+      },
+      "pid": 22440,
+      "memory": {
+        "rss": 56983552,
+        "heapTotal": 8962048,
+        "heapUsed": 7246120,
+        "external": 2051718,
+        "arrayBuffers": 26879
+      },
+      "uptime": 11581.4521703
+    },
+    {
+      "timestamp": "2025-08-10T14:39:05.661Z",
+      "service": "backend-api",
+      "level": "INFO",
+      "message": "메모리 정리 완료",
+      "metadata": {
+        "logBufferSize": 200,
+        "batchLogsSize": 20
+      },
+      "pid": 22440,
+      "memory": {
+        "rss": 56983552,
+        "heapTotal": 8962048,
+        "heapUsed": 7254320,
+        "external": 2051718,
+        "arrayBuffers": 26879
+      },
+      "uptime": 11581.4523271
+    }
+  ]
+}

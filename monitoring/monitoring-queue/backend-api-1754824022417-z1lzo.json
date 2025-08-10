@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T11:07:02.417Z","service":"backend-api","level":"ERROR","message":"HTTP 404 GET /favicon.ico","metadata":{"statusCode":404,"responseTime":0,"method":"GET","path":"/favicon.ico"},"pid":4100,"memory":{"rss":62377984,"heapTotal":8699904,"heapUsed":6867320,"external":2365935,"arrayBuffers":102281},"uptime":2813.9763053}

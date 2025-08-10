@@ -1,0 +1,54 @@
+{
+  "name": "yameyame-e2e-tests",
+  "version": "1.0.0",
+  "description": "Playwright E2E tests for YameYame React Native app",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:mobile": "playwright test --project=\"Mobile Chrome - Portrait\"",
+    "test:tablet": "playwright test --project=\"Tablet - iPad\"",
+    "test:auth": "playwright test tests/auth/",
+    "test:navigation": "playwright test tests/navigation/",
+    "test:features": "playwright test tests/features/",
+    "test:api": "playwright test tests/api/",
+    "test:performance": "playwright test tests/performance/",
+    "test:cross-platform": "playwright test tests/cross-platform/",
+    "test:smoke": "playwright test --grep \"smoke\"",
+    "test:regression": "playwright test --grep \"regression\"",
+    "report": "playwright show-report",
+    "install-deps": "playwright install",
+    "install-browsers": "playwright install --with-deps",
+    "codegen": "playwright codegen http://localhost:8081",
+    "trace": "playwright show-trace",
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts,.js --fix",
+    "clean": "rm -rf test-results/ playwright-report/ test-results-json/",
+    "ci:test": "npm run clean && npm run test",
+    "ci:test:mobile": "npm run clean && npm run test:mobile",
+    "ci:test:performance": "npm run clean && npm run test:performance",
+    "docker:build": "docker build -t yameyame-e2e .",
+    "docker:run": "docker run --rm -v $(pwd)/test-results:/app/test-results yameyame-e2e"
+  },
+  "keywords": [
+    "playwright",
+    "e2e",
+    "testing",
+    "react-native",
+    "mobile",
+    "automation"
+  ],
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.8.0",
+    "eslint": "^8.50.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

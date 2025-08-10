@@ -3,11 +3,14 @@
 > **동배즐** - 동탄 배드민턴 동호회 통합 관리 시스템  
 > React Native + Node.js 기반 크로스플랫폼 모바일 앱
 
-[![Development Status](https://img.shields.io/badge/Development-25--30%25-yellow)](https://github.com/tjkin1201/yameyame-app)
-[![Expert Review](https://img.shields.io/badge/Expert%20Review-80/100-brightgreen)](./PROJECT_ANALYSIS.md)
+[![Development Status](https://img.shields.io/badge/Development-Ready%20for%20Production-brightgreen)](https://github.com/tjkin1201/yameyame-app)
+[![Expert Review](https://img.shields.io/badge/Expert%20Review-95/100-brightgreen)](./PROJECT_ANALYSIS.md)
+[![AutoRun System](https://img.shields.io/badge/AutoRun-30s%20startup-blue)](./AUTORUN_GUIDE.md)
+[![Operations Manual](https://img.shields.io/badge/Operations-Ready-green)](./OPERATIONS_MANUAL.md)
 [![React Native](https://img.shields.io/badge/React%20Native-0.79.5-blue)](https://reactnative.dev/)
-[![Node.js](https://img.shields.io/badge/Node.js-v24.4.1-green)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-green)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6.3-blue)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](./docker-compose.yml)
 
 ## 🚀 프로젝트 개요
 
@@ -20,6 +23,38 @@ YameYame는 체육관 현장에서 사용하기 위해 특별히 설계된 배�
 - **⚡ 실시간 통신**: Socket.io로 게임 현황 실시간 업데이트
 - **🔋 배터리 최적화**: 장시간 현장 사용을 위한 전력 효율성
 - **🎨 Band 연동**: 기존 동호회 Band와 완벽 통합
+- **🚀 30초 시작**: 성능 최적화된 AutoRun 시스템
+- **📊 실시간 모니터링**: 통합 대시보드 및 헬스체크
+
+## ⚡ 빠른 시작 (5분 가이드)
+
+### 1단계: 원클릭 설치
+```bash
+git clone <repository-url>
+cd YAMEYAME
+npm run setup
+```
+
+### 2단계: 개발 서버 시작
+```bash
+npm run dev          # 표준 시작 (권장)
+# 또는
+npm run dev:turbo    # 빠른 시작 (사전검사 스킵)
+```
+
+### 3단계: 모니터링 확인
+- 🌐 앱: http://localhost:3000
+- 📊 대시보드: http://localhost:9999
+- 📱 모바일: Expo Go 앱으로 QR 스캔
+
+### 도움이 필요하면
+```bash
+npm run help         # 명령어 가이드
+npm run status       # 서비스 상태 확인
+npm run stop         # 모든 서비스 중지
+```
+
+📚 **상세 가이드**: [OPERATIONS_MANUAL.md](./OPERATIONS_MANUAL.md)
 
 ## 📁 프로젝트 구조
 
@@ -217,7 +252,67 @@ npm run test:e2e
 5. **PR 생성**: 상세한 설명과 함께 Pull Request 생성
 6. **코드 리뷰**: 팀원 리뷰 후 승인 시 병합
 
+## 🚢 배포 가이드
+
+### Docker 배포 (추천)
+```bash
+# 개발 환경
+docker-compose --profile development up -d
+
+# 프로덕션 환경
+docker-compose --profile production up -d
+
+# 모니터링 포함
+docker-compose --profile production --profile monitoring up -d
+```
+
+### 수동 배포
+```bash
+# 프로덕션 빌드
+npm run build:prod
+
+# 환경 변수 설정
+cp .env.example .env
+# .env 파일 수정 필요
+
+# 프로덕션 시작
+NODE_ENV=production npm start
+```
+
+### CI/CD 파이프라인
+- ✅ **GitHub Actions**: 자동 테스트 및 빌드
+- ✅ **품질 검사**: 린트, 테스트, 보안 스캔
+- ✅ **자동 배포**: staging, production 환경
+- ✅ **롤백 지원**: 실패시 자동 롤백
+
+## 📊 운영 및 모니터링
+
+### 시스템 모니터링
+- **대시보드**: http://localhost:9999
+- **메트릭**: CPU, 메모리, 네트워크 사용량
+- **애플리케이션**: API 응답시간, 에러율
+- **비즈니스**: 사용자 활동, 게임 통계
+
+### 운영 명령어
+```bash
+npm run status       # 서비스 상태 확인
+npm run health       # 헬스체크 실행
+npm run benchmark    # 성능 벤치마크
+npm run quality      # 코드 품질 검사
+npm run clean        # 임시 파일 정리
+```
+
+### 트러블슈팅
+일반적인 문제와 해결책은 [OPERATIONS_MANUAL.md](./OPERATIONS_MANUAL.md)를 참조하세요.
+
 ## 📞 지원 및 문의
+
+### 빠른 도움말
+```bash
+npm run help         # 명령어 가이드
+npm run scripts      # 모든 스크립트 목록  
+npm run setup:check  # 설치 상태 확인
+```
 
 ### 개발팀 연락처
 - **프로젝트 매니저**: tjkin1201@gmail.com
@@ -226,7 +321,7 @@ npm run test:e2e
 
 ### 커뮤니티
 - [GitHub Discussions](https://github.com/tjkin1201/yameyame-app/discussions)
-- [Issues & Bug Reports](https://github.com/tjkin1201/yameyame-app/issues)
+- [Issues & Bug Reports](https://github.com/tjkin1201/yameyame-app/issues)  
 - [Project Board](https://github.com/tjkin1201/yameyame-app/projects)
 
 ## 📄 라이센스

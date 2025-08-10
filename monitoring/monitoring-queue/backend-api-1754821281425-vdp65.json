@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:21:21.423Z","service":"backend-api","level":"INFO","message":"HTTP 200 GET /api/health - 0ms","metadata":{"statusCode":200,"responseTime":0,"method":"GET","path":"/api/health"},"pid":4100,"memory":{"rss":56852480,"heapTotal":7127040,"heapUsed":5563232,"external":2047679,"arrayBuffers":19810},"uptime":72.9824693}

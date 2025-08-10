@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:46:36.865Z","service":"backend-api","level":"INFO","message":"HTTP 200 GET /api/posts - 0ms","metadata":{"statusCode":200,"responseTime":0,"method":"GET","path":"/api/posts"},"pid":4100,"memory":{"rss":59092992,"heapTotal":7651328,"heapUsed":5988808,"external":2145849,"arrayBuffers":117980},"uptime":1588.4242232}

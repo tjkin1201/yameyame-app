@@ -1,0 +1,93 @@
+{
+  "compilerOptions": {
+    // 기본 컴파일 옵션
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    
+    // 엄격한 타입 체크 활성화
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    
+    // 모듈 처리
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    
+    // 출력 설정
+    "sourceMap": true,
+    "declaration": false,
+    "removeComments": false,
+    "skipLibCheck": true,
+    
+    // 실험적 기능
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    
+    // 모노레포 지원을 위한 경로 매핑
+    "baseUrl": ".",
+    "paths": {
+      "@yameyame/shared/*": ["shared/*"],
+      "@yameyame/types/*": ["shared/types/*"],
+      "@yameyame/utils/*": ["shared/utils/*"],
+      "@yameyame/backend/*": ["worktrees/backend-api/src/*"],
+      "@yameyame/frontend/*": ["worktrees/frontend-ui/yameyame-app/src/*"],
+      "@yameyame/database/*": ["worktrees/database-layer/src/*"],
+      "@yameyame/realtime/*": ["worktrees/realtime-socket/src/*"],
+      "@yameyame/band-integration/*": ["worktrees/band-integration/src/*"]
+    }
+  },
+  
+  // 모노레포 전체 포함/제외 설정
+  "include": [
+    "worktrees/*/src/**/*",
+    "worktrees/*/types/**/*",
+    "shared/**/*",
+    "global.d.ts"
+  ],
+  
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "**/dist",
+    "**/build",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/coverage",
+    "**/.expo",
+    "**/android",
+    "**/ios",
+    "**/web-build"
+  ],
+  
+  // 프로젝트 참조를 통한 모노레포 지원
+  "references": [
+    {
+      "path": "./worktrees/backend-api"
+    },
+    {
+      "path": "./worktrees/frontend-ui/yameyame-app"
+    },
+    {
+      "path": "./worktrees/database-layer"
+    },
+    {
+      "path": "./worktrees/realtime-socket"
+    }
+  ]
+}

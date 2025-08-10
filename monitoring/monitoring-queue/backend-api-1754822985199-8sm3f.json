@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:49:45.198Z","service":"backend-api","level":"ERROR","message":"HTTP 404 DELETE /api/health","metadata":{"statusCode":404,"responseTime":0,"method":"DELETE","path":"/api/health"},"pid":4100,"memory":{"rss":61415424,"heapTotal":11845632,"heapUsed":6854024,"external":2147891,"arrayBuffers":120022},"uptime":1776.7573942}

@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:49:09.939Z","service":"backend-api","level":"INFO","message":"GET /api/games","metadata":{"method":"GET","path":"/api/games","ip":"::1"},"pid":4100,"memory":{"rss":60350464,"heapTotal":8699904,"heapUsed":6218616,"external":2463004,"arrayBuffers":175811},"uptime":1741.497996}

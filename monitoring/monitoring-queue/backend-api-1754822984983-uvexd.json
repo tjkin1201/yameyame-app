@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:49:44.983Z","service":"backend-api","level":"ERROR","message":"HTTP 404 GET /api/nonexistent","metadata":{"statusCode":404,"responseTime":1,"method":"GET","path":"/api/nonexistent"},"pid":4100,"memory":{"rss":61415424,"heapTotal":11845632,"heapUsed":6781744,"external":2138941,"arrayBuffers":111072},"uptime":1776.5416531}

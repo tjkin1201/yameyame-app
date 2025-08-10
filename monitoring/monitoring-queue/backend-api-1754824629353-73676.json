@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T11:17:09.353Z","service":"backend-api","level":"DEBUG","message":"헬스 리포트 전송 완료","metadata":{},"pid":4100,"memory":{"rss":58695680,"heapTotal":8962048,"heapUsed":7031536,"external":2140369,"arrayBuffers":112500},"uptime":3420.9122565}

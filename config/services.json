@@ -1,0 +1,255 @@
+{
+  "version": "1.0.0",
+  "environment": "development",
+  "global": {
+    "timeout": 30,
+    "healthCheckInterval": 10,
+    "maxRetries": 3,
+    "parallelStartup": true,
+    "adaptiveTiming": true
+  },
+  "services": {
+    "database-layer": {
+      "name": "Database Layer",
+      "description": "MongoDB 연결 및 데이터 레이어",
+      "port": 5000,
+      "path": "worktrees/database-layer",
+      "command": {
+        "dev": "npm run dev",
+        "mock": "npm run dev:mock",
+        "test": "npm run test"
+      },
+      "healthPath": "/health",
+      "startupTime": {
+        "initial": 8,
+        "min": 3,
+        "max": 12,
+        "adaptive": true
+      },
+      "dependencies": [],
+      "layer": 1,
+      "critical": true,
+      "priority": 1,
+      "monitoring": {
+        "metrics": ["cpu", "memory", "connections", "responseTime"],
+        "alerts": {
+          "cpu": { "warning": 70, "critical": 90 },
+          "memory": { "warning": 80, "critical": 95 },
+          "responseTime": { "warning": 500, "critical": 2000 }
+        }
+      },
+      "performance": {
+        "preloadCommand": "npm run build:dev 2>nul",
+        "healthRetries": 15,
+        "healthInterval": 0.5,
+        "warmupEnabled": true
+      }
+    },
+    "backend-api": {
+      "name": "Backend API Server",
+      "description": "RESTful API 서버 및 비즈니스 로직",
+      "port": 3001,
+      "path": "worktrees/backend-api",
+      "command": {
+        "dev": "npm run dev",
+        "mock": "npm run dev:mock",
+        "test": "npm run test"
+      },
+      "healthPath": "/api/health",
+      "startupTime": {
+        "initial": 6,
+        "min": 2,
+        "max": 10,
+        "adaptive": true
+      },
+      "dependencies": ["database-layer"],
+      "layer": 2,
+      "critical": true,
+      "priority": 1,
+      "monitoring": {
+        "metrics": ["cpu", "memory", "requests", "errors", "responseTime"],
+        "alerts": {
+          "cpu": { "warning": 75, "critical": 90 },
+          "memory": { "warning": 85, "critical": 95 },
+          "errorRate": { "warning": 0.05, "critical": 0.1 },
+          "responseTime": { "warning": 200, "critical": 1000 }
+        }
+      },
+      "performance": {
+        "canParallel": true,
+        "healthRetries": 12,
+        "healthInterval": 0.5
+      }
+    },
+    "realtime-socket": {
+      "name": "Realtime Socket Server",
+      "description": "WebSocket 실시간 통신 서버",
+      "port": 3002,
+      "path": "worktrees/realtime-socket",
+      "command": {
+        "dev": "npm run dev",
+        "mock": "npm run dev:mock",
+        "test": "npm run test"
+      },
+      "healthPath": "/health",
+      "startupTime": {
+        "initial": 5,
+        "min": 2,
+        "max": 8,
+        "adaptive": true
+      },
+      "dependencies": ["database-layer"],
+      "layer": 2,
+      "critical": false,
+      "priority": 2,
+      "monitoring": {
+        "metrics": ["cpu", "memory", "connections", "messages"],
+        "alerts": {
+          "cpu": { "warning": 60, "critical": 80 },
+          "memory": { "warning": 75, "critical": 90 },
+          "connections": { "warning": 1000, "critical": 2000 }
+        }
+      },
+      "performance": {
+        "canParallel": true,
+        "healthRetries": 10,
+        "healthInterval": 0.5
+      }
+    },
+    "band-integration": {
+      "name": "Band Integration Service",
+      "description": "네이버 밴드 API 연동 서비스",
+      "port": 3003,
+      "path": "worktrees/band-integration",
+      "command": {
+        "dev": "npm run dev",
+        "mock": "npm run dev:mock",
+        "test": "npm run test"
+      },
+      "healthPath": "/health",
+      "startupTime": {
+        "initial": 5,
+        "min": 2,
+        "max": 8,
+        "adaptive": true
+      },
+      "dependencies": ["backend-api"],
+      "layer": 2.5,
+      "critical": false,
+      "priority": 3,
+      "monitoring": {
+        "metrics": ["cpu", "memory", "apiCalls", "errors"],
+        "alerts": {
+          "cpu": { "warning": 50, "critical": 70 },
+          "memory": { "warning": 70, "critical": 85 },
+          "apiErrors": { "warning": 0.1, "critical": 0.2 }
+        }
+      },
+      "performance": {
+        "earlyStart": true,
+        "healthRetries": 10,
+        "healthInterval": 0.5
+      }
+    },
+    "frontend-ui": {
+      "name": "YameYame Frontend",
+      "description": "React Native Expo 프론트엔드 앱",
+      "port": 8081,
+      "path": "worktrees/frontend-ui/yameyame-app",
+      "command": {
+        "dev": "npm start",
+        "web": "npm run web",
+        "test": "npm run test"
+      },
+      "healthPath": "/",
+      "startupTime": {
+        "initial": 10,
+        "min": 5,
+        "max": 15,
+        "adaptive": true
+      },
+      "dependencies": ["backend-api"],
+      "softDependencies": ["realtime-socket", "band-integration"],
+      "layer": 3,
+      "critical": true,
+      "priority": 1,
+      "monitoring": {
+        "metrics": ["bundleSize", "buildTime", "hotReloads"],
+        "alerts": {
+          "buildTime": { "warning": 30, "critical": 60 },
+          "bundleSize": { "warning": 10, "critical": 20 }
+        }
+      },
+      "performance": {
+        "prewarmCommand": "npm run prebuild 2>nul",
+        "healthRetries": 20,
+        "healthInterval": 0.75
+      }
+    },
+    "monitoring": {
+      "name": "Monitoring Server",
+      "description": "통합 모니터링 및 대시보드",
+      "port": 9999,
+      "path": "monitoring",
+      "command": {
+        "dev": "node monitoring-server.js",
+        "start": "node monitoring-server.js"
+      },
+      "healthPath": "/health",
+      "startupTime": {
+        "initial": 3,
+        "min": 1,
+        "max": 5,
+        "adaptive": false
+      },
+      "dependencies": [],
+      "layer": 0,
+      "critical": false,
+      "priority": 4,
+      "monitoring": {
+        "metrics": ["uptime", "connectedClients", "alertCount"],
+        "selfMonitoring": true
+      },
+      "performance": {
+        "autoStart": true,
+        "healthRetries": 5,
+        "healthInterval": 1
+      }
+    }
+  },
+  "environments": {
+    "development": {
+      "mockMode": false,
+      "verboseLogging": true,
+      "hotReload": true
+    },
+    "testing": {
+      "mockMode": true,
+      "verboseLogging": false,
+      "hotReload": false
+    },
+    "production": {
+      "mockMode": false,
+      "verboseLogging": false,
+      "hotReload": false,
+      "healthChecks": "strict"
+    }
+  },
+  "integrations": {
+    "monitoring": {
+      "enabled": true,
+      "autoStart": true,
+      "dashboardUrl": "http://localhost:9999"
+    },
+    "logging": {
+      "level": "info",
+      "format": "json",
+      "outputs": ["console", "file", "monitoring"]
+    },
+    "metrics": {
+      "interval": 10,
+      "retention": "7d",
+      "exporters": ["monitoring", "prometheus"]
+    }
+  }
+}

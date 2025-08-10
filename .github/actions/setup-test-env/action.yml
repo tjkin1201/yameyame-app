@@ -1,0 +1,120 @@
+name: 'Setup E2E Test Environment'
+description: 'Set up backend and frontend servers for E2E testing'
+
+inputs:
+  node-version:
+    description: 'Node.js version'
+    required: false
+    default: '18'
+  api-url:
+    description: 'Backend API URL'
+    required: false
+    default: 'http://localhost:3000'
+  base-url:
+    description: 'Frontend base URL'
+    required: false
+    default: 'http://localhost:8081'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Restore backend cache
+      uses: actions/cache@v3
+      with:
+        path: ./worktrees/backend-api/node_modules
+        key: backend-${{ hashFiles('**/package-lock.json') }}
+
+    - name: Restore frontend cache
+      uses: actions/cache@v3
+      with:
+        path: ./worktrees/frontend-ui/yameyame-app/node_modules
+        key: frontend-${{ hashFiles('**/package-lock.json') }}
+
+    - name: Install backend dependencies if cache miss
+      shell: bash
+      working-directory: ./worktrees/backend-api
+      run: |
+        if [ ! -d node_modules ]; then
+          npm ci
+        fi
+
+    - name: Install frontend dependencies if cache miss
+      shell: bash
+      working-directory: ./worktrees/frontend-ui/yameyame-app
+      run: |
+        if [ ! -d node_modules ]; then
+          npm ci
+        fi
+
+    - name: Start backend server
+      shell: bash
+      working-directory: ./worktrees/backend-api
+      run: |
+        npm run dev:mock &
+        echo $! > backend.pid
+        
+        # Wait for backend to be ready
+        for i in {1..30}; do
+          if curl -f ${{ inputs.api-url }}/api/health > /dev/null 2>&1; then
+            echo "Backend server is ready"
+            break
+          fi
+          echo "Waiting for backend server... ($i/30)"
+          sleep 2
+        done
+      env:
+        NODE_ENV: test
+
+    - name: Start Expo development server
+      shell: bash
+      working-directory: ./worktrees/frontend-ui/yameyame-app
+      run: |
+        npx expo start --web --non-interactive &
+        echo $! > expo.pid
+        
+        # Wait for Expo server to be ready
+        for i in {1..60}; do
+          if curl -f ${{ inputs.base-url }} > /dev/null 2>&1; then
+            echo "Expo development server is ready"
+            break
+          fi
+          echo "Waiting for Expo server... ($i/60)"
+          sleep 2
+        done
+      env:
+        EXPO_USE_DEV_SERVER: true
+
+    - name: Install E2E dependencies
+      shell: bash
+      working-directory: ./e2e
+      run: |
+        if [ ! -d node_modules ]; then
+          npm ci
+        fi
+
+    - name: Install Playwright browsers
+      shell: bash
+      working-directory: ./e2e
+      run: npx playwright install --with-deps chromium
+
+    - name: Verify servers are running
+      shell: bash
+      run: |
+        echo "Verifying backend server..."
+        curl -f ${{ inputs.api-url }}/api/health || exit 1
+        
+        echo "Verifying frontend server..."
+        curl -f ${{ inputs.base-url }} || exit 1
+        
+        echo "Both servers are ready for testing!"
+
+    - name: Setup cleanup trap
+      shell: bash
+      run: |
+        echo "Setting up cleanup trap for test processes"
+        trap 'echo "Cleaning up test processes..."; [ -f worktrees/backend-api/backend.pid ] && kill $(cat worktrees/backend-api/backend.pid) || true; [ -f worktrees/frontend-ui/yameyame-app/expo.pid ] && kill $(cat worktrees/frontend-ui/yameyame-app/expo.pid) || true' EXIT

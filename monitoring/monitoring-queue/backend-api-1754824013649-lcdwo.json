@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T11:06:53.649Z","service":"backend-api","level":"INFO","message":"GET /api/clubs","metadata":{"method":"GET","path":"/api/clubs","userAgent":"curl/8.14.1","ip":"::1"},"pid":4100,"memory":{"rss":62337024,"heapTotal":8699904,"heapUsed":7116832,"external":2232167,"arrayBuffers":204298},"uptime":2805.2080307}

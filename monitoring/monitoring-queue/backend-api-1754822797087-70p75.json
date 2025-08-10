@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:46:37.087Z","service":"backend-api","level":"INFO","message":"HTTP 200 GET /api/games - 0ms","metadata":{"statusCode":200,"responseTime":0,"method":"GET","path":"/api/games"},"pid":4100,"memory":{"rss":59236352,"heapTotal":10797056,"heapUsed":6057712,"external":2156920,"arrayBuffers":129051},"uptime":1588.6462168}

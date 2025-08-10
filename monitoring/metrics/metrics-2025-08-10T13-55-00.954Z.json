@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-08-10T13:55:00.946Z",
+  "system": {
+    "cpu": [
+      0,
+      0,
+      0
+    ],
+    "memory": {
+      "total": 34137300992,
+      "free": 15645007872,
+      "used": 18492293120,
+      "percentage": "54.17"
+    },
+    "uptime": 53033.578
+  },
+  "services": {
+    "backend-api": {
+      "name": "백엔드 API",
+      "status": "running",
+      "port": 3000,
+      "pid": 22440
+    },
+    "band-integration": {
+      "name": "밴드 연동",
+      "status": "stopped",
+      "port": 3002,
+      "pid": null
+    },
+    "database-layer": {
+      "name": "데이터베이스",
+      "status": "stopped",
+      "port": 3003,
+      "pid": null
+    },
+    "realtime-socket": {
+      "name": "실시간 소켓",
+      "status": "stopped",
+      "port": 3001,
+      "pid": null
+    },
+    "frontend-ui": {
+      "name": "프론트엔드",
+      "status": "stopped",
+      "port": 8081,
+      "pid": null
+    }
+  }
+}

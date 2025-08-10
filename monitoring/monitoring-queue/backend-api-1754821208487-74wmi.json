@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:20:08.473Z","service":"backend-api","level":"INFO","message":"backend-api 모니터링 시작","metadata":{"pid":4100,"nodeVersion":"v24.4.1","platform":"win32","arch":"x64"},"pid":4100,"memory":{"rss":55328768,"heapTotal":8175616,"heapUsed":6042400,"external":1916566,"arrayBuffers":10515},"uptime":0.0323445}

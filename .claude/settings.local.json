@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(rm:*)",
+      "Bash(find:*)",
+      "Bash(node:*)",
+      "Bash(npm --version)",
+      "Bash(npm init:*)",
+      "Bash(npm config:*)",
+      "Bash(npx create-package.json:*)",
+      "Bash(yarn --version)",
+      "Bash(npm start)",
+      "Bash(where npm)",
+      "Bash(curl:*)",
+      "Bash(npx expo:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(where mongod)",
+      "Bash(mongo:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run lint)",
+      "Bash(npx eslint:*)",
+      "Bash(npm run format:check:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run dev:status:*)",
+      "Bash(npm run dev:health:*)",
+      "Bash(npm run:*)",
+      "Bash(timeout 10s npm run dev)",
+      "Bash(timeout 15s npm run dev)",
+      "Bash(docker:*)",
+      "Bash(chmod:*)",
+      "Bash(tasklist:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}

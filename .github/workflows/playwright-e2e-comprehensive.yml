@@ -1,0 +1,946 @@
+# yameyame Playwright MCP 종합 E2E 테스트 파이프라인
+# Comprehensive E2E Testing Pipeline with Playwright MCP Integration
+
+name: 🎭 Playwright E2E Tests - Full Suite
+
+on:
+  push:
+    branches: [main, develop]
+    paths: 
+      - 'src/**'
+      - 'worktrees/*/src/**'
+      - 'tests/**'
+      - 'package.json'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: '0 2 * * *'  # 매일 새벽 2시 (KST 11시)
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: '테스트 스위트 선택'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - smoke
+        - visual
+        - performance
+        - realtime
+      browsers:
+        description: '브라우저 선택'
+        required: false
+        default: 'chromium,firefox,webkit'
+        type: string
+      devices:
+        description: '디바이스 선택'
+        required: false
+        default: 'desktop,mobile'
+        type: string
+
+env:
+  NODE_VERSION: '18'
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
+  # 테스트 환경 변수
+  CI: true
+  E2E_BASE_URL: http://localhost:8081
+  API_BASE_URL: http://localhost:3001
+  SOCKET_URL: http://localhost:3002
+  # 성능 기준값
+  PERFORMANCE_BUDGET_LCP: 2500
+  PERFORMANCE_BUDGET_FID: 100
+  PERFORMANCE_BUDGET_CLS: 0.1
+
+jobs:
+  setup-and-validate:
+    name: 🔧 설정 및 유효성 검사
+    runs-on: ubuntu-latest
+    outputs:
+      test-suites: ${{ steps.determine-suites.outputs.suites }}
+      browsers: ${{ steps.determine-browsers.outputs.browsers }}
+      devices: ${{ steps.determine-devices.outputs.devices }}
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    
+    steps:
+      - name: 📥 코드 체크아웃
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏷️ 캐시 키 생성
+        id: cache-key
+        run: |
+          echo "key=node-${{ env.NODE_VERSION }}-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
+
+      - name: 📊 테스트 스위트 결정
+        id: determine-suites
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SUITES="${{ github.event.inputs.test_suite }}"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            SUITES="smoke,visual"
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+            SUITES="all"
+          else
+            SUITES="smoke"
+          fi
+          echo "suites=$SUITES" >> $GITHUB_OUTPUT
+          echo "🎯 선택된 테스트 스위트: $SUITES"
+
+      - name: 🌐 브라우저 결정
+        id: determine-browsers  
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BROWSERS="${{ github.event.inputs.browsers }}"
+          else
+            BROWSERS="chromium,firefox,webkit"
+          fi
+          echo "browsers=$BROWSERS" >> $GITHUB_OUTPUT
+          echo "🌐 선택된 브라우저: $BROWSERS"
+
+      - name: 📱 디바이스 결정
+        id: determine-devices
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            DEVICES="${{ github.event.inputs.devices }}"
+          else
+            DEVICES="desktop,mobile"
+          fi
+          echo "devices=$DEVICES" >> $GITHUB_OUTPUT
+          echo "📱 선택된 디바이스: $DEVICES"
+
+  infrastructure-setup:
+    name: 🏗️ 인프라 및 서비스 구성
+    runs-on: ubuntu-latest
+    needs: setup-and-validate
+    
+    services:
+      mongodb:
+        image: mongo:5.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: test
+          MONGO_INITDB_ROOT_PASSWORD: test
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd mongosh
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: 📥 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 🔧 Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 종속성 설치 (루트)
+        run: npm ci
+
+      - name: 📦 마이크로서비스 종속성 설치
+        run: |
+          echo "🚀 마이크로서비스 종속성 설치 중..."
+          
+          # Backend API
+          if [ -d "worktrees/backend-api" ]; then
+            cd worktrees/backend-api
+            npm ci --production=false
+            cd ../..
+          fi
+          
+          # Realtime Socket
+          if [ -d "worktrees/realtime-socket" ]; then
+            cd worktrees/realtime-socket  
+            npm ci --production=false
+            cd ../..
+          fi
+          
+          # Band Integration
+          if [ -d "worktrees/band-integration" ]; then
+            cd worktrees/band-integration
+            npm ci --production=false
+            cd ../..
+          fi
+          
+          # Database Layer
+          if [ -d "worktrees/database-layer" ]; then
+            cd worktrees/database-layer
+            npm ci --production=false
+            cd ../..
+          fi
+          
+          # Frontend UI
+          if [ -d "worktrees/frontend-ui/yameyame-app" ]; then
+            cd worktrees/frontend-ui/yameyame-app
+            npm ci --production=false
+            cd ../../..
+          fi
+
+      - name: 🎭 Playwright 설치
+        run: |
+          npx playwright install --with-deps
+          npx playwright install-deps
+
+      - name: 📋 환경 변수 설정
+        run: |
+          cat > .env.test << EOF
+          NODE_ENV=test
+          PORT=3001
+          SOCKET_PORT=3002
+          BAND_PORT=3003
+          DB_PORT=5000
+          FRONTEND_PORT=8081
+          
+          # Database
+          MONGODB_URI=mongodb://test:test@localhost:27017/yameyame_test
+          REDIS_URL=redis://localhost:6379
+          
+          # Test credentials
+          TEST_BAND_CLIENT_ID=test_client_id
+          TEST_BAND_CLIENT_SECRET=test_client_secret
+          TEST_JWT_SECRET=test_jwt_secret_key_for_e2e_tests
+          
+          # Feature flags
+          ENABLE_SOCKET_IO=true
+          ENABLE_BAND_INTEGRATION=true
+          ENABLE_MONITORING=true
+          EOF
+
+      - name: 🚀 마이크로서비스 시작
+        run: |
+          echo "🎬 모든 서비스 시작 중..."
+          
+          # Database Layer (포트 5000)
+          if [ -d "worktrees/database-layer" ]; then
+            cd worktrees/database-layer
+            npm run start:test &
+            echo "📊 Database Layer 시작됨 (PID: $!)"
+            cd ../..
+          fi
+          
+          # Backend API (포트 3001)  
+          if [ -d "worktrees/backend-api" ]; then
+            cd worktrees/backend-api
+            npm run start:test &
+            echo "🔧 Backend API 시작됨 (PID: $!)"
+            cd ../..
+          fi
+          
+          # Realtime Socket (포트 3002)
+          if [ -d "worktrees/realtime-socket" ]; then
+            cd worktrees/realtime-socket
+            npm run start:test &
+            echo "⚡ Realtime Socket 시작됨 (PID: $!)"
+            cd ../..
+          fi
+          
+          # Band Integration (포트 3003)
+          if [ -d "worktrees/band-integration" ]; then
+            cd worktrees/band-integration
+            npm run start:test &
+            echo "🎭 Band Integration 시작됨 (PID: $!)"
+            cd ../..
+          fi
+          
+          # Frontend (포트 8081) - Expo Web
+          if [ -d "worktrees/frontend-ui/yameyame-app" ]; then
+            cd worktrees/frontend-ui/yameyame-app
+            npm run web &
+            echo "📱 Frontend UI 시작됨 (PID: $!)"
+            cd ../../..
+          fi
+          
+          # 모니터링 대시보드 (포트 9999)
+          if [ -d "monitoring" ]; then
+            cd monitoring
+            npm run start &
+            echo "📊 Monitoring 시작됨 (PID: $!)"
+            cd ..
+          fi
+
+      - name: ⏳ 서비스 준비 대기
+        run: |
+          echo "⏳ 모든 서비스가 준비될 때까지 대기 중..."
+          
+          # 서비스별 헬스체크
+          services=(
+            "http://localhost:5000/health:Database"
+            "http://localhost:3001/health:Backend"
+            "http://localhost:3002/health:Socket" 
+            "http://localhost:3003/health:Band"
+            "http://localhost:8081:Frontend"
+          )
+          
+          for service in "${services[@]}"; do
+            IFS=':' read -ra ADDR <<< "$service"
+            url=${ADDR[0]}
+            name=${ADDR[1]}
+            
+            echo "🔍 $name 서비스 헬스체크 중..."
+            
+            timeout=120
+            while [ $timeout -gt 0 ]; do
+              if curl -f -s "$url" > /dev/null; then
+                echo "✅ $name 서비스 준비 완료"
+                break
+              fi
+              
+              echo "⏳ $name 서비스 대기 중... (남은 시간: ${timeout}초)"
+              sleep 5
+              ((timeout-=5))
+            done
+            
+            if [ $timeout -eq 0 ]; then
+              echo "❌ $name 서비스 시작 실패"
+              exit 1
+            fi
+          done
+          
+          echo "🎉 모든 서비스 준비 완료!"
+
+      - name: 📊 서비스 상태 확인
+        run: |
+          echo "📋 최종 서비스 상태 점검:"
+          
+          curl -s http://localhost:5000/health | jq '.' || echo "Database Layer 응답 없음"
+          curl -s http://localhost:3001/health | jq '.' || echo "Backend API 응답 없음"  
+          curl -s http://localhost:3002/health | jq '.' || echo "Socket Server 응답 없음"
+          curl -s http://localhost:3003/health | jq '.' || echo "Band Integration 응답 없음"
+          
+          # 프로세스 상태
+          echo "🔍 실행 중인 Node.js 프로세스:"
+          pgrep -f node | head -10
+          
+          # 포트 사용 현황
+          echo "🌐 포트 사용 현황:"
+          netstat -tulpn | grep -E ':(3001|3002|3003|5000|8081|9999)'
+
+      - name: 💾 빌드 아티팩트 캐시
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            node_modules
+            worktrees/*/node_modules
+            ~/.cache/ms-playwright
+          key: ${{ needs.setup-and-validate.outputs.cache-key }}-${{ github.sha }}
+
+  e2e-test-matrix:
+    name: 🧪 E2E 테스트 실행
+    runs-on: ubuntu-latest
+    needs: [setup-and-validate, infrastructure-setup]
+    if: always() && needs.infrastructure-setup.result == 'success'
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]  
+        test-suite: [smoke, user-flows, realtime, performance, visual, accessibility]
+        device: [desktop, mobile]
+        exclude:
+          # 리소스 절약을 위한 조합 제외
+          - browser: webkit
+            test-suite: performance
+          - browser: firefox  
+            test-suite: visual
+            device: mobile
+          - browser: webkit
+            test-suite: accessibility
+            device: mobile
+    
+    continue-on-error: true
+    timeout-minutes: 45
+    
+    steps:
+      - name: 📥 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 🔧 Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 💾 캐시 복원
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            node_modules
+            worktrees/*/node_modules
+            ~/.cache/ms-playwright
+          key: ${{ needs.setup-and-validate.outputs.cache-key }}-${{ github.sha }}
+
+      - name: 🎭 Playwright 브라우저 설치
+        run: npx playwright install ${{ matrix.browser }} --with-deps
+
+      - name: 🏗️ 테스트 환경 설정
+        run: |
+          # 디바이스별 설정
+          if [ "${{ matrix.device }}" = "mobile" ]; then
+            export PLAYWRIGHT_VIEWPORT_WIDTH=375
+            export PLAYWRIGHT_VIEWPORT_HEIGHT=667
+            export DEVICE_TYPE=mobile
+          else
+            export PLAYWRIGHT_VIEWPORT_WIDTH=1920
+            export PLAYWRIGHT_VIEWPORT_HEIGHT=1080  
+            export DEVICE_TYPE=desktop
+          fi
+          
+          # 브라우저별 설정
+          export BROWSER_NAME=${{ matrix.browser }}
+          
+          # 테스트 스위트별 설정
+          case "${{ matrix.test-suite }}" in
+            "smoke")
+              export TEST_TIMEOUT=30000
+              export TEST_RETRIES=2
+              ;;
+            "performance")
+              export TEST_TIMEOUT=60000
+              export TEST_RETRIES=1
+              ;;
+            "visual")
+              export TEST_TIMEOUT=45000
+              export TEST_RETRIES=1
+              ;;
+            *)
+              export TEST_TIMEOUT=30000
+              export TEST_RETRIES=2
+              ;;
+          esac
+          
+          echo "📊 테스트 설정:"
+          echo "브라우저: ${{ matrix.browser }}"
+          echo "디바이스: ${{ matrix.device }}"  
+          echo "테스트 스위트: ${{ matrix.test-suite }}"
+          echo "타임아웃: $TEST_TIMEOUT"
+
+      - name: 🚀 서비스 재시작 (경량화)
+        run: |
+          # 테스트 매트릭스용 경량 서비스 시작
+          npm run start:test-services &
+          
+          # 기본적인 헬스체크만 수행
+          timeout 60 bash -c 'until curl -f http://localhost:8081; do sleep 2; done'
+
+      - name: 🧪 E2E 테스트 실행
+        run: |
+          case "${{ matrix.test-suite }}" in
+            "smoke")
+              echo "💨 Smoke 테스트 실행..."
+              npx playwright test tests/e2e/smoke/ --project=${{ matrix.browser }}
+              ;;
+            "user-flows")
+              echo "👤 사용자 플로우 테스트 실행..."
+              npx playwright test tests/e2e/user-journeys/ --project=${{ matrix.browser }}
+              ;;
+            "realtime")
+              echo "⚡ 실시간 테스트 실행..."
+              npx playwright test tests/e2e/realtime/ --project=${{ matrix.browser }}
+              ;;
+            "performance")
+              echo "🚀 성능 테스트 실행..."
+              npx playwright test tests/e2e/performance/ --project=${{ matrix.browser }}
+              ;;
+            "visual")
+              echo "🎨 시각적 회귀 테스트 실행..."
+              npx playwright test tests/e2e/visual-regression/ --project=${{ matrix.browser }}
+              ;;
+            "accessibility")
+              echo "♿ 접근성 테스트 실행..."
+              npx playwright test tests/e2e/accessibility/ --project=${{ matrix.browser }}
+              ;;
+          esac
+        env:
+          BROWSER_NAME: ${{ matrix.browser }}
+          DEVICE_TYPE: ${{ matrix.device }}
+          TEST_SUITE: ${{ matrix.test-suite }}
+
+      - name: 📊 테스트 결과 분석
+        if: always()
+        run: |
+          # 테스트 결과 요약
+          if [ -f "test-results/results.json" ]; then
+            echo "📋 테스트 결과 요약:"
+            cat test-results/results.json | jq '.stats'
+          fi
+          
+          # 실패한 테스트 목록
+          if [ -f "test-results/failures.json" ]; then
+            echo "❌ 실패한 테스트:"
+            cat test-results/failures.json | jq '.failures[].title'
+          fi
+
+      - name: 📁 테스트 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.browser }}-${{ matrix.test-suite }}-${{ matrix.device }}
+          path: |
+            test-results/
+            playwright-report/
+            screenshots/
+            videos/
+          retention-days: 7
+
+  performance-analysis:
+    name: 📊 성능 분석 및 리포팅
+    runs-on: ubuntu-latest
+    needs: e2e-test-matrix
+    if: always() && contains(needs.e2e-test-matrix.result, 'success')
+    
+    steps:
+      - name: 📥 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 🔧 Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📁 성능 테스트 결과 다운로드
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*-performance-*
+          path: performance-results/
+
+      - name: 📊 성능 데이터 집계 및 분석
+        run: |
+          cat > analyze-performance.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          // 성능 데이터 수집
+          const collectPerformanceData = () => {
+            const results = [];
+            const resultsDir = 'performance-results';
+            
+            if (!fs.existsSync(resultsDir)) {
+              console.log('성능 결과 디렉토리가 없습니다.');
+              return [];
+            }
+            
+            const subDirs = fs.readdirSync(resultsDir);
+            
+            subDirs.forEach(subDir => {
+              const resultsPath = path.join(resultsDir, subDir, 'test-results', 'results.json');
+              
+              if (fs.existsSync(resultsPath)) {
+                try {
+                  const data = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+                  results.push({
+                    browser: subDir.split('-')[2],
+                    device: subDir.split('-')[4],
+                    ...data
+                  });
+                } catch (error) {
+                  console.log(`결과 파일 파싱 오류: ${resultsPath}`);
+                }
+              }
+            });
+            
+            return results;
+          };
+          
+          // 성능 분석 및 리포트 생성
+          const generatePerformanceReport = (data) => {
+            if (data.length === 0) {
+              return '성능 데이터가 없습니다.';
+            }
+            
+            // Core Web Vitals 평균 계산
+            const avgLCP = data.reduce((sum, d) => sum + (d.webVitals?.lcp || 0), 0) / data.length;
+            const avgFID = data.reduce((sum, d) => sum + (d.webVitals?.fid || 0), 0) / data.length;
+            const avgCLS = data.reduce((sum, d) => sum + (d.webVitals?.cls || 0), 0) / data.length;
+            
+            // API 성능 평균
+            const avgApiResponse = data.reduce((sum, d) => sum + (d.apiPerformance?.avgDuration || 0), 0) / data.length;
+            
+            // 브라우저별 성능 비교
+            const browserPerformance = {};
+            data.forEach(d => {
+              if (!browserPerformance[d.browser]) {
+                browserPerformance[d.browser] = { count: 0, totalScore: 0 };
+              }
+              browserPerformance[d.browser].count++;
+              browserPerformance[d.browser].totalScore += (d.overallScore || 0);
+            });
+            
+            Object.keys(browserPerformance).forEach(browser => {
+              browserPerformance[browser].avgScore = 
+                browserPerformance[browser].totalScore / browserPerformance[browser].count;
+            });
+            
+            return {
+              summary: {
+                totalTests: data.length,
+                avgLCP: Math.round(avgLCP),
+                avgFID: Math.round(avgFID), 
+                avgCLS: Math.round(avgCLS * 1000) / 1000,
+                avgApiResponse: Math.round(avgApiResponse)
+              },
+              browserComparison: browserPerformance,
+              recommendations: generateRecommendations(avgLCP, avgFID, avgCLS, avgApiResponse)
+            };
+          };
+          
+          const generateRecommendations = (lcp, fid, cls, api) => {
+            const recommendations = [];
+            
+            if (lcp > 2500) {
+              recommendations.push(`🐌 LCP 개선 필요 (${lcp}ms > 2500ms): 이미지 최적화, 서버 응답 시간 개선`);
+            }
+            if (fid > 100) {
+              recommendations.push(`⏰ FID 개선 필요 (${fid}ms > 100ms): JavaScript 실행 최적화, 메인 스레드 블로킹 감소`);
+            }
+            if (cls > 0.1) {
+              recommendations.push(`📐 CLS 개선 필요 (${cls} > 0.1): 레이아웃 시프트 방지, 이미지/폰트 사이즈 명시`);
+            }
+            if (api > 500) {
+              recommendations.push(`🌐 API 응답 시간 개선 필요 (${api}ms > 500ms): 데이터베이스 최적화, 캐싱 전략`);
+            }
+            
+            if (recommendations.length === 0) {
+              recommendations.push('✅ 모든 성능 지표가 목표치를 만족합니다!');
+            }
+            
+            return recommendations;
+          };
+          
+          // 실행
+          const performanceData = collectPerformanceData();
+          const report = generatePerformanceReport(performanceData);
+          
+          console.log('📊 성능 분석 결과:');
+          console.log(JSON.stringify(report, null, 2));
+          
+          // 파일로 저장
+          fs.writeFileSync('performance-report.json', JSON.stringify(report, null, 2));
+          
+          // Markdown 리포트 생성
+          let markdown = '# 🚀 yameyame 성능 테스트 결과\n\n';
+          markdown += `## 📊 성능 요약\n\n`;
+          markdown += `- **총 테스트**: ${report.summary.totalTests}개\n`;
+          markdown += `- **평균 LCP**: ${report.summary.avgLCP}ms\n`;
+          markdown += `- **평균 FID**: ${report.summary.avgFID}ms\n`;
+          markdown += `- **평균 CLS**: ${report.summary.avgCLS}\n`;
+          markdown += `- **평균 API 응답**: ${report.summary.avgApiResponse}ms\n\n`;
+          
+          markdown += `## 🌐 브라우저별 성능\n\n`;
+          Object.entries(report.browserComparison).forEach(([browser, data]) => {
+            markdown += `- **${browser}**: ${data.avgScore.toFixed(1)}점 (${data.count}개 테스트)\n`;
+          });
+          
+          markdown += `\n## 💡 개선 권장사항\n\n`;
+          report.recommendations.forEach(rec => {
+            markdown += `${rec}\n\n`;
+          });
+          
+          fs.writeFileSync('performance-report.md', markdown);
+          EOF
+          
+          node analyze-performance.js
+
+      - name: 📊 성능 트렌드 분석
+        run: |
+          # 이전 성능 데이터와 비교 (GitHub API 사용)
+          if [ -f "performance-report.json" ]; then
+            echo "📈 성능 트렌드 분석 중..."
+            
+            # 간단한 성능 회귀 검사
+            LCP=$(cat performance-report.json | jq '.summary.avgLCP')
+            FID=$(cat performance-report.json | jq '.summary.avgFID')
+            CLS=$(cat performance-report.json | jq '.summary.avgCLS')
+            
+            echo "성능 기준치 검증:"
+            echo "LCP: $LCP ms (기준: < $PERFORMANCE_BUDGET_LCP ms)"
+            echo "FID: $FID ms (기준: < $PERFORMANCE_BUDGET_FID ms)" 
+            echo "CLS: $CLS (기준: < $PERFORMANCE_BUDGET_CLS)"
+            
+            # 성능 기준 초과시 경고
+            if (( $(echo "$LCP > $PERFORMANCE_BUDGET_LCP" | bc -l) )); then
+              echo "⚠️ LCP 성능 기준 초과!"
+              echo "performance-regression=true" >> $GITHUB_ENV
+            fi
+            
+            if (( $(echo "$FID > $PERFORMANCE_BUDGET_FID" | bc -l) )); then
+              echo "⚠️ FID 성능 기준 초과!"
+              echo "performance-regression=true" >> $GITHUB_ENV
+            fi
+            
+            if (( $(echo "$CLS > $PERFORMANCE_BUDGET_CLS" | bc -l) )); then
+              echo "⚠️ CLS 성능 기준 초과!"
+              echo "performance-regression=true" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: 📁 성능 리포트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-analysis-report
+          path: |
+            performance-report.json
+            performance-report.md
+          retention-days: 30
+
+      - name: 📝 PR 성능 리포트 댓글
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            if (fs.existsSync('performance-report.md')) {
+              const report = fs.readFileSync('performance-report.md', 'utf8');
+              
+              // 기존 성능 리포트 댓글 찾기
+              const comments = await github.rest.issues.listComments({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              
+              const botComment = comments.data.find(comment => 
+                comment.user.type === 'Bot' && comment.body.includes('yameyame 성능 테스트 결과')
+              );
+              
+              const commentBody = `${report}\n\n---\n_자동 생성됨: ${new Date().toLocaleString('ko-KR', {timeZone: 'Asia/Seoul'})}_`;
+              
+              if (botComment) {
+                // 기존 댓글 업데이트
+                await github.rest.issues.updateComment({
+                  comment_id: botComment.id,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: commentBody
+                });
+              } else {
+                // 새 댓글 생성
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: commentBody
+                });
+              }
+            }
+
+  visual-regression-check:
+    name: 🎨 시각적 회귀 분석
+    runs-on: ubuntu-latest
+    needs: e2e-test-matrix
+    if: always() && contains(needs.e2e-test-matrix.result, 'success')
+    
+    steps:
+      - name: 📥 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 📁 시각적 테스트 결과 다운로드
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*-visual-*
+          path: visual-results/
+
+      - name: 🎨 시각적 회귀 분석
+        run: |
+          echo "🎨 시각적 회귀 분석 시작..."
+          
+          TOTAL_VISUAL_TESTS=0
+          FAILED_VISUAL_TESTS=0
+          VISUAL_DIFFS=()
+          
+          for result_dir in visual-results/*/; do
+            if [ -d "$result_dir" ]; then
+              echo "📁 분석 중: $result_dir"
+              
+              # 실패한 시각적 테스트 카운트
+              if [ -d "$result_dir/test-results" ]; then
+                failed_count=$(find "$result_dir/test-results" -name "*-diff.png" | wc -l)
+                total_count=$(find "$result_dir/test-results" -name "*.png" | wc -l)
+                
+                TOTAL_VISUAL_TESTS=$((TOTAL_VISUAL_TESTS + total_count))
+                FAILED_VISUAL_TESTS=$((FAILED_VISUAL_TESTS + failed_count))
+                
+                if [ $failed_count -gt 0 ]; then
+                  VISUAL_DIFFS+=("$result_dir: $failed_count 개 차이점 발견")
+                fi
+              fi
+            fi
+          done
+          
+          echo "📊 시각적 회귀 분석 결과:"
+          echo "전체 시각적 테스트: $TOTAL_VISUAL_TESTS"
+          echo "실패한 테스트: $FAILED_VISUAL_TESTS"
+          echo "성공률: $(( (TOTAL_VISUAL_TESTS - FAILED_VISUAL_TESTS) * 100 / TOTAL_VISUAL_TESTS ))%"
+          
+          if [ $FAILED_VISUAL_TESTS -gt 0 ]; then
+            echo "visual-regression=true" >> $GITHUB_ENV
+            echo "⚠️ 시각적 회귀 감지!"
+            printf '%s\n' "${VISUAL_DIFFS[@]}"
+          else
+            echo "✅ 시각적 회귀 없음"
+          fi
+
+      - name: 📝 시각적 회귀 리포트 생성
+        if: env.visual-regression == 'true'
+        run: |
+          cat > visual-regression-report.md << EOF
+          # 🎨 시각적 회귀 감지 리포트
+          
+          ## 📊 요약
+          - **감지된 시각적 변경사항**: ${FAILED_VISUAL_TESTS}개
+          - **전체 시각적 테스트**: ${TOTAL_VISUAL_TESTS}개  
+          - **영향도**: $(( FAILED_VISUAL_TESTS * 100 / TOTAL_VISUAL_TESTS ))%
+          
+          ## 🔍 상세 내용
+          $(printf '%s\n' "${VISUAL_DIFFS[@]}" | sed 's/^/- /')
+          
+          ## 💡 조치 방안
+          1. 의도된 디자인 변경인지 확인
+          2. 의도된 변경이라면 기준 스크린샷 업데이트
+          3. 의도되지 않은 변경이라면 원인 조사 및 수정
+          
+          ## 📁 관련 파일
+          시각적 차이점 이미지는 GitHub Actions 아티팩트에서 확인할 수 있습니다.
+          EOF
+
+      - name: 📁 시각적 회귀 리포트 업로드
+        if: env.visual-regression == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-report
+          path: visual-regression-report.md
+          retention-days: 30
+
+  notification-and-reporting:
+    name: 📢 알림 및 최종 리포팅
+    runs-on: ubuntu-latest
+    needs: [e2e-test-matrix, performance-analysis, visual-regression-check]
+    if: always()
+    
+    steps:
+      - name: 📊 전체 결과 집계
+        run: |
+          echo "📋 yameyame E2E 테스트 전체 결과 집계"
+          
+          # 테스트 매트릭스 결과 분석
+          TOTAL_JOBS=$(echo '${{ toJSON(needs.e2e-test-matrix.result) }}' | jq -r 'length')
+          SUCCESS_JOBS=$(echo '${{ toJSON(needs.e2e-test-matrix.result) }}' | jq -r 'map(select(. == "success")) | length')
+          
+          echo "전체 테스트 작업: $TOTAL_JOBS"
+          echo "성공한 작업: $SUCCESS_JOBS"
+          echo "성공률: $(( SUCCESS_JOBS * 100 / TOTAL_JOBS ))%"
+          
+          # 성능 회귀 확인
+          PERFORMANCE_REGRESSION="${{ env.performance-regression }}"
+          VISUAL_REGRESSION="${{ env.visual-regression }}"
+          
+          echo "성능 회귀: ${PERFORMANCE_REGRESSION:-false}"
+          echo "시각적 회귀: ${VISUAL_REGRESSION:-false}"
+          
+          # 전체 상태 결정
+          if [ "$SUCCESS_JOBS" -eq "$TOTAL_JOBS" ] && [ "$PERFORMANCE_REGRESSION" != "true" ] && [ "$VISUAL_REGRESSION" != "true" ]; then
+            echo "overall-status=success" >> $GITHUB_ENV
+            echo "✅ 모든 테스트 통과!"
+          else
+            echo "overall-status=failure" >> $GITHUB_ENV
+            echo "❌ 일부 테스트 실패 또는 회귀 감지"
+          fi
+
+      - name: 📢 Slack 알림 (성공)
+        if: env.overall-status == 'success' && (github.event_name == 'push' || github.event_name == 'schedule')
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: |
+            🎉 yameyame E2E 테스트 모두 통과!
+            
+            📊 결과:
+            • 전체 테스트 작업: ${{ env.total-jobs }}개
+            • 성공률: 100%
+            • 성능 회귀: 없음
+            • 시각적 회귀: 없음
+            
+            🔗 상세 결과: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 📢 Slack 알림 (실패)  
+        if: env.overall-status == 'failure' && (github.event_name == 'push' || github.event_name == 'schedule')
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: |
+            ⚠️ yameyame E2E 테스트 이슈 발생
+            
+            📊 결과:
+            • 성능 회귀: ${{ env.performance-regression || '없음' }}
+            • 시각적 회귀: ${{ env.visual-regression || '없음' }}
+            
+            🔍 조치 필요:
+            • 실패 로그 확인
+            • 회귀 원인 분석
+            • 수정 후 재테스트
+            
+            🔗 상세 결과: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 📈 GitHub Pages 리포트 배포
+        if: always() && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./reports
+          destination_dir: e2e-reports/${{ github.run_number }}
+
+      - name: 🏷️ 테스트 결과 태그
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if [ "${{ env.overall-status }}" = "success" ]; then
+            git tag -a "e2e-pass-$(date +%Y%m%d-%H%M%S)" -m "E2E tests passed at $(date)"
+            git push origin --tags
+          fi
+
+  cleanup:
+    name: 🧹 정리 작업
+    runs-on: ubuntu-latest
+    needs: [e2e-test-matrix, performance-analysis, visual-regression-check, notification-and-reporting]
+    if: always()
+    
+    steps:
+      - name: 🧹 아티팩트 정리
+        run: |
+          echo "🧹 테스트 완료 후 정리 작업 시작"
+          
+          # 7일 이상 된 아티팩트 정리 (GitHub API 사용)
+          # 실제로는 GitHub의 아티팩트 보존 기간 설정으로 자동 관리됨
+          
+          echo "✅ 정리 작업 완료"
+
+      - name: 📊 리소스 사용량 리포트
+        run: |
+          echo "💾 GitHub Actions 리소스 사용량:"
+          echo "워크플로우 실행 시간: ${{ github.event.repository.updated_at }}"
+          echo "매트릭스 작업 수: $(echo '${{ strategy.job-total }}' || echo 'N/A')"
+          
+          # 월간 실행 횟수 추적 (간단한 예시)
+          echo "📅 이번 달 E2E 테스트 실행: ${{ github.run_number }}번째"

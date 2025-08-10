@@ -1,0 +1,1 @@
+{"timestamp":"2025-08-10T10:20:08.487Z","service":"backend-api","level":"INFO","message":"Server started successfully","metadata":{"port":3000},"pid":4100,"memory":{"rss":58109952,"heapTotal":10797056,"heapUsed":5530504,"external":2035354,"arrayBuffers":10515},"uptime":0.0455576}
