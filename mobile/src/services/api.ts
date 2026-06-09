@@ -1,0 +1,65 @@
+import axios from 'axios';
+
+/**
+ * 서버 API 클라이언트
+ * - 개발: localhost (Android 에뮬레이터는 10.0.2.2)
+ */
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+
+export const api = axios.create({
+  baseURL: BASE_URL,
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// ── ELO ──────────────────────────────────────────────
+
+export interface TierInfo {
+  tier: string;
+  minElo: number;
+  maxElo: number;
+  color: string;
+}
+
+export async function calculateSinglesElo(
+  player1Elo: number,
+  player2Elo: number,
+  winner: 1 | 2
+) {
+  const { data } = await api.post('/api/elo/singles', { player1Elo, player2Elo, winner });
+  return data.data;
+}
+
+export async function calculateDoublesElo(
+  team1Elos: [number, number],
+  team2Elos: [number, number],
+  winner: 1 | 2
+) {
+  const { data } = await api.post('/api/elo/doubles', { team1Elos, team2Elos, winner });
+  return data.data;
+}
+
+export async function getRatingTier(elo: number): Promise<{ currentElo: number; tier: TierInfo }> {
+  const { data } = await api.get(`/api/elo/tier/${elo}`);
+  return data.data;
+}
+
+// ── Matching ─────────────────────────────────────────
+
+export interface MatchPlayer {
+  id: string;
+  name: string;
+  elo: number;
+}
+
+export async function generateBrackets(players: MatchPlayer[]) {
+  const { data } = await api.post('/api/matching/generate', { players });
+  return data.data;
+}
+
+// ── Health ───────────────────────────────────────────
+
+export async function checkServerHealth() {
+  const { data } = await api.get('/api/health');
+  return data;
+}

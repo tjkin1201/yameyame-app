@@ -1,0 +1,22 @@
+{
+  "name": "yameyame",
+  "version": "1.0.0",
+  "description": "동배즐 - 동탄 배드민턴 동호회 통합 관리 시스템",
+  "private": true,
+  "workspaces": [
+    "server",
+    "mobile"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=server",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:mobile": "npm run start --workspace=mobile",
+    "build": "npm run build --workspace=server",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
