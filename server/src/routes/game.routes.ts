@@ -4,6 +4,7 @@ import Game, { IGame } from '../models/Game.model';
 import Member from '../models/Member.model';
 import Club from '../models/Club.model';
 import { eloService } from '../services/elo.service';
+import { socketService } from '../services/socket.service';
 
 const router = Router();
 
@@ -142,6 +143,13 @@ router.post('/', async (req: Request, res: Response) => {
     await game.populate('team1.players', 'name elo profileImage');
     await game.populate('team2.players', 'name elo profileImage');
 
+    // 실시간 알림: 클럽에 새 게임 생성 알림
+    socketService.sendNotificationToClub(gameData.clubId.toString(), {
+      type: 'game:created',
+      game: game.toObject(),
+      timestamp: new Date().toISOString(),
+    });
+
     return res.status(201).json(game);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to create game', details: (error as Error).message });
@@ -195,6 +203,14 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
 
     game.status = status;
     await game.save();
+
+    // 실시간 알림: 게임 상태 변경
+    socketService.sendNotificationToClub(game.clubId.toString(), {
+      type: 'game:status_changed',
+      gameId: game._id,
+      status,
+      timestamp: new Date().toISOString(),
+    });
 
     return res.status(200).json(game);
   } catch (error) {
@@ -293,6 +309,40 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
 
     // Club 통계 업데이트
     await Club.findByIdAndUpdate(game.clubId, { $inc: { 'stats.totalGames': 1 } });
+
+    // 실시간 알림: 게임 완료 및 ELO 변경
+    const allPlayers = [
+      ...(game.team1.players as any[]),
+      ...(game.team2.players as any[]),
+    ];
+
+    // 클럽 전체에 게임 완료 알림
+    socketService.sendNotificationToClub(game.clubId.toString(), {
+      type: 'game:completed',
+      gameId: game._id,
+      winner,
+      team1Score,
+      team2Score,
+      eloChanges,
+      timestamp: new Date().toISOString(),
+    });
+
+    // 각 플레이어에게 개별 ELO 변경 알림
+    allPlayers.forEach((player: any, index: number) => {
+      const isTeam1 = index < (game.type === 'singles' ? 1 : 2);
+      const teamEloChanges = isTeam1 ? eloChanges.team1 : eloChanges.team2;
+      const playerIndex = isTeam1 ? index : index - (game.type === 'singles' ? 1 : 2);
+
+      socketService.sendNotificationToUser(player._id.toString(), {
+        type: 'elo:updated',
+        gameId: game._id,
+        oldElo: player.elo - teamEloChanges[playerIndex],
+        newElo: player.elo,
+        change: teamEloChanges[playerIndex],
+        isWin: (isTeam1 && winner === 1) || (!isTeam1 && winner === 2),
+        timestamp: new Date().toISOString(),
+      });
+    });
 
     return res.status(200).json({
       game,

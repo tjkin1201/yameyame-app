@@ -1,14 +1,16 @@
 import React from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { FAB, Text, Card, Chip, ActivityIndicator, useTheme } from 'react-native-paper';
+import { FAB, Text, Card, Chip, ActivityIndicator, useTheme, Snackbar } from 'react-native-paper';
 import { GymStyles } from '../theme/gymTheme';
 import { getGames, Game } from '../services/api';
+import { socketService } from '../services/socket';
 
 export default function GamesScreen() {
   const theme = useTheme();
   const [games, setGames] = React.useState<Game[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [notification, setNotification] = React.useState<string | null>(null);
 
   const loadGames = React.useCallback(async () => {
     try {
@@ -26,6 +28,39 @@ export default function GamesScreen() {
 
   React.useEffect(() => {
     loadGames();
+
+    // Socket.io 실시간 업데이트
+    const handleGameCreated = (data: any) => {
+      console.log('Game created:', data);
+      setNotification('새 게임이 등록되었습니다');
+      loadGames(); // 목록 새로고침
+    };
+
+    const handleGameStatusChanged = (data: any) => {
+      console.log('Game status changed:', data);
+      setNotification(`게임 상태가 변경되었습니다: ${data.status}`);
+      setGames((prevGames) =>
+        prevGames.map((game) =>
+          game._id === data.gameId ? { ...game, status: data.status } : game
+        )
+      );
+    };
+
+    const handleGameCompleted = (data: any) => {
+      console.log('Game completed:', data);
+      setNotification('게임이 완료되었습니다!');
+      loadGames(); // ELO 변경 반영을 위해 새로고침
+    };
+
+    socketService.on('game:created', handleGameCreated);
+    socketService.on('game:status_changed', handleGameStatusChanged);
+    socketService.on('game:completed', handleGameCompleted);
+
+    return () => {
+      socketService.off('game:created', handleGameCreated);
+      socketService.off('game:status_changed', handleGameStatusChanged);
+      socketService.off('game:completed', handleGameCompleted);
+    };
   }, [loadGames]);
 
   const getStatusColor = (status: string) => {
@@ -148,6 +183,18 @@ export default function GamesScreen() {
         label="게임 등록"
         onPress={() => {}}
       />
+
+      <Snackbar
+        visible={!!notification}
+        onDismiss={() => setNotification(null)}
+        duration={3000}
+        action={{
+          label: '확인',
+          onPress: () => setNotification(null),
+        }}
+      >
+        {notification}
+      </Snackbar>
     </View>
   );
 }

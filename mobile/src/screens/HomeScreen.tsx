@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View, RefreshControl } from 'react-native';
 import { Button, Card, Text, ActivityIndicator, useTheme } from 'react-native-paper';
 import { GymStyles } from '../theme/gymTheme';
 import { getGames, getLeaderboard } from '../services/api';
+import { socketService } from '../services/socket';
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -49,6 +50,35 @@ export default function HomeScreen() {
 
   React.useEffect(() => {
     loadData();
+
+    // Socket.io 실시간 업데이트
+    const handleGameCreated = () => {
+      loadData(); // 새 게임이 생성되면 데이터 새로고침
+    };
+
+    const handleGameCompleted = (data: any) => {
+      console.log('Game completed:', data);
+      loadData(); // 게임 완료 시 통계 새로고침
+    };
+
+    const handleEloUpdated = (data: any) => {
+      console.log('ELO updated:', data);
+      // 자신의 ELO가 업데이트된 경우 알림
+      if (data.isWin) {
+        console.log(`축하합니다! ELO ${data.change > 0 ? '+' : ''}${data.change}`);
+      }
+      loadData(); // ELO 변경 시 레이팅 새로고침
+    };
+
+    socketService.on('game:created', handleGameCreated);
+    socketService.on('game:completed', handleGameCompleted);
+    socketService.on('elo:updated', handleEloUpdated);
+
+    return () => {
+      socketService.off('game:created', handleGameCreated);
+      socketService.off('game:completed', handleGameCompleted);
+      socketService.off('elo:updated', handleEloUpdated);
+    };
   }, [loadData]);
 
   const onRefresh = React.useCallback(() => {
