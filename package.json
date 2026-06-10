@@ -18,5 +18,9 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "overrides": {
+    "@expo/vector-icons": "~14.0.0",
+    "expo-font": "~12.0.0"
+  }
 }
