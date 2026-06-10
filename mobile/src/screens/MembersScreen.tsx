@@ -1,8 +1,8 @@
 import React from 'react';
 import { FlatList, StyleSheet, View, TouchableOpacity } from 'react-native';
-import { Searchbar, Text, Card, Avatar, Chip, ActivityIndicator, useTheme, SegmentedButtons, IconButton, Menu, Divider } from 'react-native-paper';
+import { Searchbar, Text, Card, Avatar, Chip, ActivityIndicator, useTheme, SegmentedButtons, IconButton, Menu, Divider, Banner } from 'react-native-paper';
 import { GymStyles } from '../theme/gymTheme';
-import { getEnhancedLeaderboard, EnhancedLeaderboard } from '../services/api';
+import { offlineApi } from '../services/offlineApi';
 
 interface MembersScreenProps {
   navigation: any;
@@ -11,55 +11,79 @@ interface MembersScreenProps {
 export default function MembersScreen({ navigation }: MembersScreenProps) {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [members, setMembers] = React.useState<EnhancedLeaderboard[]>([]);
+  const [members, setMembers] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [period, setPeriod] = React.useState<'all' | 'month' | 'week'>('all');
   const [levelFilter, setLevelFilter] = React.useState<string>('');
+  const [period, setPeriod] = React.useState<'all' | 'month' | 'week'>('all');
   const [menuVisible, setMenuVisible] = React.useState(false);
+  const [isOnline, setIsOnline] = React.useState(offlineApi.isOnline());
+  const [syncing, setSyncing] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleNetworkChange = (online: boolean) => {
+      setIsOnline(online);
+      if (online) {
+        loadMembers(); // 온라인으로 전환되면 새로고침
+      }
+    };
+
+    offlineApi.onNetworkChange(handleNetworkChange);
+
+    return () => {
+      offlineApi.offNetworkChange(handleNetworkChange);
+    };
+  }, []);
 
   const loadMembers = React.useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getEnhancedLeaderboard({
-        period,
-        level: levelFilter || undefined,
+      const response = await offlineApi.getMembers({
+        search: searchQuery,
+        isActive: true,
         limit: 100
       });
 
-      // 검색어 필터링
-      const filtered = searchQuery
-        ? response.leaderboard.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
-        : response.leaderboard;
-
-      setMembers(filtered);
+      setMembers(response.members);
     } catch (err) {
       setError('회원 목록을 불러올 수 없습니다');
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [period, levelFilter, searchQuery]);
+  }, [searchQuery, levelFilter]);
+
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      await offlineApi.syncNow();
+      await loadMembers();
+    } catch (err) {
+      console.error('동기화 실패:', err);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   React.useEffect(() => {
     loadMembers();
   }, [loadMembers]);
 
-  const handleMemberPress = (member: EnhancedLeaderboard) => {
+  const handleMemberPress = (member: any) => {
     navigation.navigate('MemberDetail', {
       memberId: member._id,
       memberName: member.name,
     });
   };
 
-  const renderMember = ({ item }: { item: EnhancedLeaderboard }) => (
+  const renderMember = ({ item, index }: { item: any; index: number }) => (
     <TouchableOpacity onPress={() => handleMemberPress(item)}>
       <Card style={styles.card} mode="outlined">
         <Card.Content>
           <View style={styles.memberRow}>
             <View style={styles.rankContainer}>
-              <Text style={styles.rankText}>#{item.rank}</Text>
+              <Text style={styles.rankText}>#{index + 1}</Text>
             </View>
             <Avatar.Text
               size={56}
@@ -98,6 +122,21 @@ export default function MembersScreen({ navigation }: MembersScreenProps) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {!isOnline && (
+        <Banner
+          visible={true}
+          icon="wifi-off"
+          actions={[
+            {
+              label: syncing ? '동기화 중...' : '동기화',
+              onPress: handleSync,
+              disabled: syncing,
+            },
+          ]}
+        >
+          오프라인 모드 - 로컬 데이터를 사용 중입니다
+        </Banner>
+      )}
       <View style={styles.filterContainer}>
         <View style={styles.searchRow}>
           <Searchbar

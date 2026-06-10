@@ -1,9 +1,10 @@
 import React from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { FAB, Text, Card, Chip, ActivityIndicator, useTheme, Snackbar } from 'react-native-paper';
+import { FAB, Text, Card, Chip, ActivityIndicator, useTheme, Snackbar, Banner } from 'react-native-paper';
 import { GymStyles } from '../theme/gymTheme';
-import { getGames, Game } from '../services/api';
+import { Game } from '../services/api';
 import { socketService } from '../services/socket';
+import { offlineApi } from '../services/offlineApi';
 
 export default function GamesScreen() {
   const theme = useTheme();
@@ -11,12 +12,14 @@ export default function GamesScreen() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [notification, setNotification] = React.useState<string | null>(null);
+  const [isOnline, setIsOnline] = React.useState(offlineApi.isOnline());
+  const [syncing, setSyncing] = React.useState(false);
 
   const loadGames = React.useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getGames({ limit: 50, sortBy: 'date', order: 'desc' });
+      const response = await offlineApi.getGames({ limit: 50 });
       setGames(response.games);
     } catch (err) {
       setError('게임 목록을 불러올 수 없습니다');
@@ -24,6 +27,33 @@ export default function GamesScreen() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      await offlineApi.syncNow();
+      await loadGames();
+    } catch (err) {
+      console.error('동기화 실패:', err);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  React.useEffect(() => {
+    const handleNetworkChange = (online: boolean) => {
+      setIsOnline(online);
+      if (online) {
+        loadGames(); // 온라인으로 전환되면 새로고침
+      }
+    };
+
+    offlineApi.onNetworkChange(handleNetworkChange);
+
+    return () => {
+      offlineApi.offNetworkChange(handleNetworkChange);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -158,6 +188,21 @@ export default function GamesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {!isOnline && (
+        <Banner
+          visible={true}
+          icon="wifi-off"
+          actions={[
+            {
+              label: syncing ? '동기화 중...' : '동기화',
+              onPress: handleSync,
+              disabled: syncing,
+            },
+          ]}
+        >
+          오프라인 모드 - 로컬 데이터를 사용 중입니다
+        </Banner>
+      )}
       {error ? (
         <View style={styles.centered}>
           <Text style={styles.errorText}>{error}</Text>
