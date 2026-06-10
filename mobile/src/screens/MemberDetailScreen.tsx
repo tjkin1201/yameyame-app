@@ -4,6 +4,7 @@ import { Text, Card, Chip, ActivityIndicator, useTheme, Divider } from 'react-na
 import { LineChart } from 'react-native-gifted-charts';
 import { GymStyles } from '../theme/gymTheme';
 import { getMemberDashboard, MemberDashboard } from '../services/api';
+import { offlineApi } from '../services/offlineApi';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -29,7 +30,11 @@ export default function MemberDetailScreen({ route }: MemberDetailScreenProps) {
       const data = await getMemberDashboard(memberId);
       setDashboard(data);
     } catch (err) {
-      setError('대시보드를 불러올 수 없습니다');
+      setError(
+        offlineApi.isOnline()
+          ? '대시보드를 불러올 수 없습니다'
+          : '오프라인 상태입니다 — 대시보드는 온라인에서 볼 수 있어요'
+      );
       console.error(err);
     } finally {
       setLoading(false);

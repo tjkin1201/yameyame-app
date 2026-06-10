@@ -276,26 +276,38 @@ class DatabaseService {
     return result;
   }
 
+  async getGame(id: string): Promise<LocalGame | null> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const result = await this.db.getFirstAsync<LocalGame>(
+      'SELECT * FROM games WHERE id = ?',
+      [id]
+    );
+    return result || null;
+  }
+
   async saveGame(game: Partial<LocalGame>): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
     const now = new Date().toISOString();
+    const existing = game.id ? await this.getGame(game.id) : null;
 
-    if (game.id) {
+    if (existing) {
       // Update
       await this.db.runAsync(
         `UPDATE games SET
           team1Score = ?, team2Score = ?, winner = ?,
-          status = ?, syncStatus = ?, updatedAt = ?
+          status = ?, syncStatus = ?, lastSyncAt = ?, updatedAt = ?
         WHERE id = ?`,
         [
-          game.team1Score || 0,
-          game.team2Score || 0,
-          game.winner || null,
-          game.status || 'scheduled',
-          'pending',
+          game.team1Score ?? existing.team1Score,
+          game.team2Score ?? existing.team2Score,
+          game.winner ?? existing.winner ?? null,
+          game.status || existing.status,
+          game.syncStatus || 'pending',
+          game.lastSyncAt || existing.lastSyncAt || null,
           now,
-          game.id,
+          existing.id,
         ]
       );
     } else {
@@ -304,10 +316,10 @@ class DatabaseService {
         `INSERT INTO games (
           id, clubId, date, courtNumber, type,
           team1Players, team2Players, team1Score, team2Score,
-          winner, status, syncStatus, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          winner, status, syncStatus, lastSyncAt, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          `local_${Date.now()}`,
+          game.id || `local_${Date.now()}`,
           game.clubId || '',
           game.date || now,
           game.courtNumber || null,
@@ -318,12 +330,24 @@ class DatabaseService {
           game.team2Score || 0,
           game.winner || null,
           game.status || 'scheduled',
-          'pending',
-          now,
+          game.syncStatus || 'pending',
+          game.lastSyncAt || null,
+          game.createdAt || now,
           now,
         ]
       );
     }
+  }
+
+  // 오프라인 생성 임시 레코드(local_ prefix) 정리 전용 — 일반 삭제는 deleteMember(soft delete) 사용
+  async hardDeleteMember(id: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    await this.db.runAsync('DELETE FROM members WHERE id = ?', [id]);
+  }
+
+  async hardDeleteGame(id: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    await this.db.runAsync('DELETE FROM games WHERE id = ?', [id]);
   }
 
   // Sync Queue

@@ -67,11 +67,11 @@ class SyncService {
       this.isSyncing = true;
       console.log('🔄 Starting sync...');
 
-      // 1. 서버에서 최신 데이터 가져오기
-      await this.pullFromServer();
-
-      // 2. 로컬 변경사항을 서버로 푸시
+      // 1. 로컬 변경사항을 서버로 푸시 (임시 레코드 정리 포함)
       await this.pushToServer();
+
+      // 2. 서버에서 정본 데이터 가져오기
+      await this.pullFromServer();
 
       console.log('✅ Sync completed');
     } catch (error) {
@@ -173,7 +173,8 @@ class SyncService {
     switch (op.entity) {
       case 'member':
         if (op.operation === 'create') {
-          await apiService.createMember(data);
+          const created = await apiService.createMember(data);
+          await this.reconcileLocalCreate(op, created);
         } else if (op.operation === 'update') {
           await apiService.updateMember(op.entityId, data);
         } else if (op.operation === 'delete') {
@@ -183,13 +184,72 @@ class SyncService {
 
       case 'game':
         if (op.operation === 'create') {
-          await apiService.createGame(data);
+          const created = await apiService.createGame(data);
+          await this.reconcileLocalCreate(op, created);
         } else if (op.operation === 'update') {
           await apiService.updateGame(op.entityId, data);
         } else if (op.operation === 'delete') {
           await apiService.deleteGame(op.entityId);
         }
         break;
+    }
+  }
+
+  /**
+   * 오프라인에서 생성된 임시 레코드(local_ prefix)를 서버 생성 성공 후 정리한다.
+   * 정리하지 않으면 다음 pull에서 서버 사본이 추가돼 로컬에 중복 레코드가 남는다.
+   *
+   * @param op 성공한 create 동기화 작업 (op.entityId = 로컬 임시 id)
+   * @param serverRecord 서버가 생성한 레코드 (server._id 포함)
+   */
+  private async reconcileLocalCreate(op: SyncOperation, serverRecord: any): Promise<void> {
+    if (!op.entityId.startsWith('local_')) return;
+    if (!serverRecord?._id) return;
+
+    const now = new Date().toISOString();
+
+    if (op.entity === 'member') {
+      await dbService.hardDeleteMember(op.entityId);
+      await dbService.saveMember({
+        id: serverRecord._id,
+        name: serverRecord.name,
+        email: serverRecord.email,
+        phone: serverRecord.phone,
+        profileImage: serverRecord.profileImage,
+        level: serverRecord.level,
+        position: serverRecord.position,
+        elo: serverRecord.elo,
+        highestElo: serverRecord.highestElo,
+        lowestElo: serverRecord.lowestElo,
+        totalGames: serverRecord.stats?.totalGames ?? 0,
+        wins: serverRecord.stats?.wins ?? 0,
+        losses: serverRecord.stats?.losses ?? 0,
+        winRate: serverRecord.stats?.winRate ?? 0,
+        currentStreak: serverRecord.stats?.currentStreak ?? 0,
+        isActive: serverRecord.isActive ? 1 : 0,
+        syncStatus: 'synced',
+        lastSyncAt: now,
+        updatedAt: serverRecord.joinDate || now,
+      });
+    } else {
+      await dbService.hardDeleteGame(op.entityId);
+      await dbService.saveGame({
+        id: serverRecord._id,
+        clubId: serverRecord.clubId,
+        date: serverRecord.date,
+        courtNumber: serverRecord.courtNumber,
+        type: serverRecord.type,
+        team1Players: JSON.stringify(serverRecord.team1.players.map((p: any) => p._id || p)),
+        team2Players: JSON.stringify(serverRecord.team2.players.map((p: any) => p._id || p)),
+        team1Score: serverRecord.team1.score,
+        team2Score: serverRecord.team2.score,
+        winner: serverRecord.winner || undefined,
+        status: serverRecord.status,
+        syncStatus: 'synced',
+        lastSyncAt: now,
+        createdAt: serverRecord.date,
+        updatedAt: serverRecord.date,
+      });
     }
   }
 
