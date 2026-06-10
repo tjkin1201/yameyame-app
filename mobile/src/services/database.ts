@@ -194,9 +194,9 @@ class DatabaseService {
         WHERE id = ?`,
         [
           member.name || existing.name,
-          member.email || existing.email,
-          member.phone || existing.phone,
-          member.profileImage || existing.profileImage,
+          member.email || existing.email || null,
+          member.phone || existing.phone || null,
+          member.profileImage || existing.profileImage || null,
           member.level || existing.level,
           member.position || existing.position,
           member.elo ?? existing.elo,
@@ -210,7 +210,7 @@ class DatabaseService {
           member.isActive ?? existing.isActive,
           member.syncStatus || 'pending',
           now,
-          member.id,
+          existing.id,
         ]
       );
     } else {

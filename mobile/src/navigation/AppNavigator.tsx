@@ -11,8 +11,13 @@ import MembersScreen from '../screens/MembersScreen';
 import MemberDetailScreen from '../screens/MemberDetailScreen';
 import CommunityScreen from '../screens/CommunityScreen';
 
+export type MembersStackParamList = {
+  MembersList: undefined;
+  MemberDetail: { memberId: string; memberName: string };
+};
+
 const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<MembersStackParamList>();
 
 function MembersStack() {
   const theme = useTheme();
