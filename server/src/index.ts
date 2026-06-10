@@ -8,6 +8,9 @@ import dotenv from 'dotenv';
 
 import eloRoutes from './routes/elo.routes';
 import matchingRoutes from './routes/matching.routes';
+import memberRoutes from './routes/member.routes';
+import gameRoutes from './routes/game.routes';
+import clubRoutes from './routes/club.routes';
 import { socketService } from './services/socket.service';
 import { database } from './utils/database';
 
@@ -46,6 +49,9 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 // API Routes
 app.use('/api/elo', eloRoutes);
 app.use('/api/matching', matchingRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/games', gameRoutes);
+app.use('/api/clubs', clubRoutes);
 
 // Root
 app.get('/', (_req: Request, res: Response) => {
@@ -56,6 +62,9 @@ app.get('/', (_req: Request, res: Response) => {
       health: '/api/health',
       elo: '/api/elo',
       matching: '/api/matching',
+      members: '/api/members',
+      games: '/api/games',
+      clubs: '/api/clubs',
     },
   });
 });
@@ -100,6 +109,9 @@ async function startServer() {
     console.log(`💚 health:   /api/health`);
     console.log(`🎯 elo:      /api/elo`);
     console.log(`🎲 matching: /api/matching`);
+    console.log(`👥 members:  /api/members`);
+    console.log(`🎮 games:    /api/games`);
+    console.log(`🏛️  clubs:    /api/clubs`);
     console.log(`🔌 socket:   ws://localhost:${PORT}`);
     console.log('━'.repeat(50));
   });

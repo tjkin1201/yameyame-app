@@ -103,7 +103,7 @@ export class EloService {
   }
 
   /** E = 1 / (1 + 10^((opponent - player) / 400)) */
-  private expectedScore(playerElo: number, opponentElo: number): number {
+  expectedScore(playerElo: number, opponentElo: number): number {
     return 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
   }
 
