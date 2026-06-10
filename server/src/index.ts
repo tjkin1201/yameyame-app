@@ -11,6 +11,7 @@ import matchingRoutes from './routes/matching.routes';
 import memberRoutes from './routes/member.routes';
 import gameRoutes from './routes/game.routes';
 import clubRoutes from './routes/club.routes';
+import statsRoutes from './routes/stats.routes';
 import { socketService } from './services/socket.service';
 import { database } from './utils/database';
 
@@ -52,6 +53,7 @@ app.use('/api/matching', matchingRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/clubs', clubRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Root
 app.get('/', (_req: Request, res: Response) => {
@@ -65,6 +67,7 @@ app.get('/', (_req: Request, res: Response) => {
       members: '/api/members',
       games: '/api/games',
       clubs: '/api/clubs',
+      stats: '/api/stats',
     },
   });
 });
@@ -112,6 +115,7 @@ async function startServer() {
     console.log(`👥 members:  /api/members`);
     console.log(`🎮 games:    /api/games`);
     console.log(`🏛️  clubs:    /api/clubs`);
+    console.log(`📊 stats:    /api/stats`);
     console.log(`🔌 socket:   ws://localhost:${PORT}`);
     console.log('━'.repeat(50));
   });

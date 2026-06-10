@@ -288,3 +288,96 @@ export async function createClub(clubData: {
   const { data } = await api.post('/api/clubs', clubData);
   return data;
 }
+
+// ── Stats ────────────────────────────────────────────
+
+export interface EnhancedLeaderboard {
+  rank: number;
+  _id: string;
+  name: string;
+  elo: number;
+  level: string;
+  position: string;
+  profileImage?: string;
+  highestElo: number;
+  lowestElo: number;
+  stats: {
+    totalGames: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+    currentStreak: number;
+  };
+}
+
+export interface MemberDashboard {
+  member: Member;
+  eloTrend: Array<{ elo: number; date: string; gameId: string }>;
+  recentGames: Array<{
+    _id: string;
+    date: string;
+    type: string;
+    team1: any;
+    team2: any;
+    winner: number;
+    myTeam: number;
+    isWin: boolean;
+  }>;
+  monthlyStats: Array<{
+    month: string;
+    games: number;
+    wins: number;
+    losses: number;
+    eloChange: number;
+    winRate: number;
+  }>;
+  headToHead: Array<{
+    opponent: Member;
+    wins: number;
+    losses: number;
+    total: number;
+  }>;
+  form: {
+    trend: number;
+    recentChanges: number[];
+    status: 'hot' | 'cold' | 'stable';
+  };
+}
+
+export interface PredictionStats {
+  overall: {
+    accuracy: number;
+    correct: number;
+    total: number;
+  };
+  byType: {
+    singles: { accuracy: number; correct: number; total: number };
+    doubles: { accuracy: number; correct: number; total: number };
+  };
+  byEloDifference: Array<{
+    range: string;
+    accuracy: number;
+    correct: number;
+    total: number;
+  }>;
+}
+
+export async function getEnhancedLeaderboard(params?: {
+  period?: 'all' | 'month' | 'week';
+  position?: string;
+  level?: string;
+  limit?: number;
+}): Promise<{ leaderboard: EnhancedLeaderboard[]; period: string; filters: any; total: number }> {
+  const { data } = await api.get('/api/stats/leaderboard', { params });
+  return data;
+}
+
+export async function getMemberDashboard(memberId: string): Promise<MemberDashboard> {
+  const { data } = await api.get(`/api/stats/member/${memberId}/dashboard`);
+  return data;
+}
+
+export async function getPredictionStats(): Promise<PredictionStats> {
+  const { data } = await api.get('/api/stats/predictions');
+  return data;
+}
