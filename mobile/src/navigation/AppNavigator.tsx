@@ -1,15 +1,44 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from 'react-native-paper';
 
 import HomeScreen from '../screens/HomeScreen';
 import GamesScreen from '../screens/GamesScreen';
 import MembersScreen from '../screens/MembersScreen';
+import MemberDetailScreen from '../screens/MemberDetailScreen';
 import CommunityScreen from '../screens/CommunityScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+function MembersStack() {
+  const theme = useTheme();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerTitleStyle: { fontSize: 20, fontWeight: 'bold' },
+        headerTintColor: theme.colors.primary,
+      }}
+    >
+      <Stack.Screen
+        name="MembersList"
+        component={MembersScreen}
+        options={{ title: '회원', headerShown: false }}
+      />
+      <Stack.Screen
+        name="MemberDetail"
+        component={MemberDetailScreen}
+        options={({ route }: any) => ({
+          title: route.params?.memberName || '회원 상세',
+        })}
+      />
+    </Stack.Navigator>
+  );
+}
 
 export default function AppNavigator() {
   const theme = useTheme();
@@ -48,9 +77,10 @@ export default function AppNavigator() {
         />
         <Tab.Screen
           name="Members"
-          component={MembersScreen}
+          component={MembersStack}
           options={{
             title: '회원',
+            headerShown: false,
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons name="account-group" color={color} size={size + 4} />
             ),

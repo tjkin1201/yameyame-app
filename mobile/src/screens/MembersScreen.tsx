@@ -1,10 +1,14 @@
 import React from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View, TouchableOpacity } from 'react-native';
 import { Searchbar, Text, Card, Avatar, Chip, ActivityIndicator, useTheme } from 'react-native-paper';
 import { GymStyles } from '../theme/gymTheme';
 import { getMembers, Member } from '../services/api';
 
-export default function MembersScreen() {
+interface MembersScreenProps {
+  navigation: any;
+}
+
+export default function MembersScreen({ navigation }: MembersScreenProps) {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [members, setMembers] = React.useState<Member[]>([]);
@@ -29,15 +33,23 @@ export default function MembersScreen() {
     loadMembers();
   }, [loadMembers]);
 
+  const handleMemberPress = (member: Member) => {
+    navigation.navigate('MemberDetail', {
+      memberId: member._id,
+      memberName: member.name,
+    });
+  };
+
   const renderMember = ({ item }: { item: Member }) => (
-    <Card style={styles.card} mode="outlined">
-      <Card.Content>
-        <View style={styles.memberRow}>
-          <Avatar.Text
-            size={56}
-            label={item.name[0]}
-            style={{ backgroundColor: theme.colors.primary }}
-          />
+    <TouchableOpacity onPress={() => handleMemberPress(item)}>
+      <Card style={styles.card} mode="outlined">
+        <Card.Content>
+          <View style={styles.memberRow}>
+            <Avatar.Text
+              size={56}
+              label={item.name[0]}
+              style={{ backgroundColor: theme.colors.primary }}
+            />
           <View style={styles.memberInfo}>
             <Text style={styles.memberName}>{item.name}</Text>
             <View style={styles.memberStats}>
@@ -55,6 +67,7 @@ export default function MembersScreen() {
         </View>
       </Card.Content>
     </Card>
+    </TouchableOpacity>
   );
 
   if (loading) {
