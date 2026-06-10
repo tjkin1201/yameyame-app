@@ -2,6 +2,7 @@
   "expo": {
     "name": "YameYame",
     "slug": "yameyame",
+    "scheme": "yameyame",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -13,6 +14,9 @@
     },
     "android": {
       "package": "com.yameyame.app"
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

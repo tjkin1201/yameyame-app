@@ -5,12 +5,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, StyleSheet } from 'react-native';
 import { GymLightTheme } from './src/theme/gymTheme';
 import AppNavigator from './src/navigation/AppNavigator';
+import LoginScreen from './src/screens/LoginScreen';
 import { socketService } from './src/services/socket';
 import { dbService } from './src/services/database';
 import { syncService } from './src/services/sync';
+import { isGuestMode, restoreAuthHeader } from './src/services/auth';
 
 export default function App() {
   const [isInitialized, setIsInitialized] = React.useState(false);
+  const [isSignedIn, setIsSignedIn] = React.useState(false);
 
   React.useEffect(() => {
     initializeApp();
@@ -24,6 +27,10 @@ export default function App() {
   const initializeApp = async () => {
     try {
       console.log('🚀 Initializing app...');
+
+      // 0. 저장된 로그인 상태 복원 (Band JWT 또는 게스트 모드)
+      const hasToken = await restoreAuthHeader();
+      setIsSignedIn(hasToken || (await isGuestMode()));
 
       // 1. 로컬 DB 초기화
       await dbService.initialize();
@@ -57,6 +64,20 @@ export default function App() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={GymLightTheme.colors.primary} />
           </View>
+          <StatusBar style="auto" />
+        </PaperProvider>
+      </SafeAreaProvider>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <SafeAreaProvider>
+        <PaperProvider theme={GymLightTheme}>
+          <LoginScreen
+            onSignedIn={() => setIsSignedIn(true)}
+            onGuest={() => setIsSignedIn(true)}
+          />
           <StatusBar style="auto" />
         </PaperProvider>
       </SafeAreaProvider>

@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import compression from 'compression';
 import dotenv from 'dotenv';
 
+import authRoutes from './routes/auth.routes';
 import eloRoutes from './routes/elo.routes';
 import matchingRoutes from './routes/matching.routes';
 import memberRoutes from './routes/member.routes';
@@ -48,6 +49,7 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/elo', eloRoutes);
 app.use('/api/matching', matchingRoutes);
 app.use('/api/members', memberRoutes);
