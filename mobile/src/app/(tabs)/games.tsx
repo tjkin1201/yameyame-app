@@ -31,7 +31,7 @@ import { useClub } from '../../lib/club-context';
 import { generateDoubles } from '../../lib/matching';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing, TouchTarget, Typography } from '../../lib/theme';
-import type { Game, GameType, Member, RecordGameResult } from '../../lib/types';
+import type { Game, GameType, Member, RecordGameResult, Session } from '../../lib/types';
 
 // ─── 날짜 헬퍼 ────────────────────────────────────────────
 function formatDate(iso: string): string {
@@ -193,6 +193,28 @@ function RecordTab({ activeMembers, clubId, onRecorded }: RecordTabProps) {
   const [activeSlot, setActiveSlot] = useState<SlotKey | null>(null);
   const [recentGames, setRecentGames] = useState<Game[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  // 오늘 진행되는 모임 — 있으면 게임이 자동으로 그 모임에 연결됨
+  const [todaySession, setTodaySession] = useState<Session | null>(null);
+
+  const loadTodaySession = useCallback(async () => {
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const { data } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('club_id', clubId)
+      .gte('starts_at', dayStart.toISOString())
+      .lt('starts_at', dayEnd.toISOString())
+      .order('starts_at')
+      .limit(1)
+      .maybeSingle();
+    setTodaySession((data as Session | null) ?? null);
+  }, [clubId]);
+
+  useEffect(() => {
+    void loadTodaySession();
+  }, [loadTodaySession]);
 
   const loadRecentGames = useCallback(async () => {
     const { data, error } = await supabase
@@ -270,7 +292,7 @@ function RecordTab({ activeMembers, clubId, onRecorded }: RecordTabProps) {
         p_score1: s1,
         p_score2: s2,
         p_winner: winner,
-        p_session: null,
+        p_session: todaySession?.id ?? null,
       });
       if (error) throw error;
       const result = data as RecordGameResult | null;
@@ -331,6 +353,22 @@ function RecordTab({ activeMembers, clubId, onRecorded }: RecordTabProps) {
         }
         ListHeaderComponent={
           <View style={styles.tabContent}>
+            {/* 오늘 모임 자동 연결 배지 */}
+            {todaySession && (
+              <View
+                style={{
+                  backgroundColor: Colors.tertiaryContainer,
+                  borderRadius: Radius,
+                  paddingVertical: Spacing.xs,
+                  paddingHorizontal: Spacing.sm,
+                  marginTop: Spacing.sm,
+                }}
+              >
+                <Text style={[Typography.caption, { color: Colors.text }]}>
+                  📍 오늘 모임 「{todaySession.title}」에 자동 기록됩니다
+                </Text>
+              </View>
+            )}
             {/* 게임 타입 토글 */}
             <SectionTitle title="게임 유형" />
             <View style={styles.toggleRow}>

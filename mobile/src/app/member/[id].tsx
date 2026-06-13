@@ -90,13 +90,17 @@ export default function MemberDetailScreen() {
   const { club, me } = useClub();
   const [member, setMember] = useState<Member | null>(null);
   const [history, setHistory] = useState<EloHistory[]>([]);
+  // 출석률: 지난 모임 수 대비 참석 수
+  const [pastSessionCount, setPastSessionCount] = useState(0);
+  const [attendedCount, setAttendedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
-    if (!id) return;
+    if (!id || !club) return;
     try {
-      const [memberRes, historyRes] = await Promise.all([
+      const nowIso = new Date().toISOString();
+      const [memberRes, historyRes, pastRes, attendRes] = await Promise.all([
         supabase.from('members').select('*').eq('id', id).single(),
         supabase
           .from('elo_history')
@@ -104,15 +108,30 @@ export default function MemberDetailScreen() {
           .eq('member_id', id)
           .order('created_at', { ascending: false })
           .limit(20),
+        // 지난 모임 수 (클럽 전체)
+        supabase
+          .from('sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('club_id', club.id)
+          .lt('starts_at', nowIso),
+        // 이 멤버의 지난 모임 참석 수 (sessions inner join으로 과거만)
+        supabase
+          .from('attendance')
+          .select('id, sessions!inner(id)', { count: 'exact', head: true })
+          .eq('member_id', id)
+          .eq('status', 'attending')
+          .lt('sessions.starts_at', nowIso),
       ]);
       if (memberRes.error) throw memberRes.error;
       if (historyRes.error) throw historyRes.error;
       setMember(memberRes.data as Member);
       setHistory((historyRes.data ?? []) as EloHistory[]);
+      setPastSessionCount(pastRes.count ?? 0);
+      setAttendedCount(attendRes.count ?? 0);
     } catch (e: unknown) {
       Alert.alert('오류', e instanceof Error ? e.message : '실패했습니다');
     }
-  }, [id]);
+  }, [id, club]);
 
   useEffect(() => {
     setLoading(true);
@@ -182,6 +201,24 @@ export default function MemberDetailScreen() {
               <Text style={[Typography.caption, { textAlign: 'center', marginTop: 4 }]}>
                 최근 20경기 기준
               </Text>
+            </Card>
+
+            {/* 출석률 */}
+            <Card style={styles.winLossCard}>
+              {pastSessionCount > 0 ? (
+                <>
+                  <Text style={[Typography.h3, { textAlign: 'center' }]}>
+                    출석률 {Math.round((attendedCount / pastSessionCount) * 100)}%
+                  </Text>
+                  <Text style={[Typography.caption, { textAlign: 'center', marginTop: 4 }]}>
+                    지난 모임 {pastSessionCount}회 중 {attendedCount}회 참석
+                  </Text>
+                </>
+              ) : (
+                <Text style={[Typography.caption, { textAlign: 'center' }]}>
+                  아직 지난 모임이 없어요 — 첫 모임 후 출석률이 표시됩니다
+                </Text>
+              )}
             </Card>
 
             <SectionTitle title="최근 ELO 변동" />
