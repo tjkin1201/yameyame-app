@@ -33,3 +33,4 @@ web-build/
 
 # Test
 coverage/
+.gstack/

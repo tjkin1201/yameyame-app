@@ -164,6 +164,7 @@ function BracketTab({ activeMembers }: BracketTabProps) {
 interface RecordTabProps {
   activeMembers: Member[];
   clubId: string;
+  onRecorded: () => void;
 }
 
 interface SlotState {
@@ -182,7 +183,7 @@ const SLOT_LABELS: Record<SlotKey, string> = {
   t2p2: '팀2 선수2',
 };
 
-function RecordTab({ activeMembers, clubId }: RecordTabProps) {
+function RecordTab({ activeMembers, clubId, onRecorded }: RecordTabProps) {
   const [gameType, setGameType] = useState<GameType>('doubles');
   const [slots, setSlots] = useState<SlotState>({ t1p1: null, t1p2: null, t2p1: null, t2p2: null });
   const [score1, setScore1] = useState('');
@@ -282,6 +283,7 @@ function RecordTab({ activeMembers, clubId }: RecordTabProps) {
       Alert.alert('기록 완료', ratingLines);
       resetForm();
       void loadRecentGames();
+      onRecorded(); // ELO 변동을 리더보드·선수목록에 즉시 반영
     } catch (e: unknown) {
       Alert.alert('오류', e instanceof Error ? e.message : '실패했습니다');
     } finally {
@@ -596,7 +598,9 @@ export default function GamesScreen() {
       </View>
 
       {tab === 'bracket' && <BracketTab activeMembers={activeMembers} />}
-      {tab === 'record' && <RecordTab activeMembers={activeMembers} clubId={club.id} />}
+      {tab === 'record' && (
+        <RecordTab activeMembers={activeMembers} clubId={club.id} onRecorded={() => void loadMembers()} />
+      )}
       {tab === 'leaderboard' && (
         <LeaderboardTab
           activeMembers={activeMembers}
